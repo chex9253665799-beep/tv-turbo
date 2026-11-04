@@ -54,7 +54,7 @@ public final class Updater {
         JSONArray assets = rel.getJSONArray("assets");
         for (int i = 0; i < assets.length(); i++) {
             JSONObject a = assets.getJSONObject(i);
-            if (a.getString("name").endsWith(".apk")) { info.apkUrl = a.getString("browser_download_url"); break; }
+            if (a.getString("name").equals("TvTurbo.apk")) { info.apkUrl = a.getString("browser_download_url"); break; }
         }
         return info;
     }
@@ -83,6 +83,13 @@ public final class Updater {
                 byte[] data = InstallActivity.download(info.apkUrl);
                 try (OutputStream o = new FileOutputStream(f)) { o.write(data); }
             } catch (Throwable t) { say(adb, l, "✖ Обновление не скачалось: " + t.getMessage()); return; }
+            // файл в релизе мог ещё не смениться (номер версии появляется раньше файла) — не ставим старое по кругу
+            android.content.pm.PackageInfo pi = c.getPackageManager().getPackageArchiveInfo(f.getAbsolutePath(), 0);
+            if (pi == null || !c.getPackageName().equals(pi.packageName) || pi.versionCode <= cur) {
+                f.delete();
+                say(adb, l, force ? "Обновление ещё выкладывается — попробуй через пару минут" : null);
+                return;
+            }
             if (!adb.isConnected()) { say(adb, l, "Обновление скачано — подключись к ТВ, чтобы установить"); return; }
             say(adb, l, "Устанавливаю 1." + info.remoteCode + " — приложение перезапустится…");
             // после установки ТВ закроет старую версию; новая запустится командой ниже
