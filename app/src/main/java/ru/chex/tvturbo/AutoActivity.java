@@ -142,6 +142,7 @@ public class AutoActivity extends ListScreen {
             misc.add("dumpsys deviceidle whitelist +" + getPackageName() + " >/dev/null 2>&1; true");
             misc.add("cmd appops set " + getPackageName() + " RUN_ANY_IN_BACKGROUND allow 2>/dev/null; true");
             if (YouTube.installed(this, YouTube.DPI_PKG)) YouTube.grant(adb);
+            Launchers.disableStock(this, adb);   // PatchWall больше не выскакивает при включении
             done += step(3, misc, null);
 
             // 5–6. лаунчер

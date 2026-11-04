@@ -109,6 +109,19 @@ public final class Guard {
             }
         }
 
+        // 5б. PatchWall / стандартный лаунчер: отключить, а если уже на экране — уйти на свой
+        {
+            String fg = Launchers.foreground(adb);
+            String curHome = Pkgs.currentHome(c);
+            int off = Launchers.disableStock(c, adb);
+            if (off > 0) { fixed++; note(what, "PatchWall отключён"); }
+            // на экране чужой стартовый экран (PatchWall) — уйти на свой главный
+            if (!fg.isEmpty() && !fg.equals(curHome) && (Launchers.isPatchWall(fg) || (Launchers.isStock(fg) && !Launchers.isStock(curHome)))) {
+                adb.execSync("input keyevent 3", true);
+                fixed++; note(what, "открыт твой главный экран");
+            }
+        }
+
         // 6. обход YouTube
         // переход со старого ByeByeDPI (VPN на весь ТВ) на «ТВ Турбо Обход» (только YouTube) — сам
         if (Profile.youtube(c) && !YouTube.installed(c, YouTube.DPI_PKG)) {

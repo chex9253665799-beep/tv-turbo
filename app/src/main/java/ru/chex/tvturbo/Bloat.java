@@ -23,7 +23,7 @@ public final class Bloat {
         new Item("com.google.android.leanbacklauncher.recommendations", SAFE, "Рекомендации лаунчера", "Подгружает рекламные карточки"),
         new Item("com.google.android.apps.tv.launcherx.ads", SAFE, "Реклама Google TV", "Рекламные баннеры главного экрана"),
         new Item("com.google.android.partnersetup", CAUTION, "Partner Setup", "Партнёрские предустановки и промо"),
-        new Item("com.mitv.tvhome.atv", CAUTION, "Xiaomi PatchWall (реклама)", "Рекламный контент Xiaomi"),
+        new Item("com.mitv.tvhome.atv", RISKY, "Xiaomi PatchWall (платный лаунчер)", "Отключать ТОЛЬКО после установки другого лаунчера — сделает сам «Главный экран»"),
         new Item("com.xm.webcontent", SAFE, "Xiaomi веб-контент", "Промо-контент Xiaomi"),
         new Item("com.xiaomi.mitv.handbook", SAFE, "Xiaomi справочник", "Не нужен"),
 

@@ -31,6 +31,50 @@ public final class Launchers {
             "Самый лёгкий · 30–40 МБ")
     );
 
+    /** Стандартные главные экраны: PatchWall Xiaomi (с платными подписками), Google TV, Android TV. */
+    public static final String[] STOCK = {
+            "com.mitv.tvhome.atv", "com.mitv.tvhome", "com.mitv.tvhome.michannel",
+            "com.google.android.apps.tv.launcherx", "com.google.android.tvlauncher", "com.google.android.leanbacklauncher"
+    };
+
+    public static boolean isStock(String pkg) {
+        for (String s : STOCK) if (s.equals(pkg)) return true;
+        return pkg.startsWith("com.mitv.tvhome");
+    }
+
+    /** Что сейчас на экране (пакет). Только в потоке Adb. */
+    public static String foreground(Adb adb) {
+        String out = adb.execSync("dumpsys activity activities | grep -m1 -E 'mResumedActivity|ResumedActivity'", false).out;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("u0 ([\\w.]+)/").matcher(out);
+        return m.find() ? m.group(1) : "";
+    }
+
+    /** PatchWall Xiaomi — платные подписки, выскакивает при включении ТВ поверх главного экрана. */
+    public static boolean isPatchWall(String pkg) {
+        return pkg.startsWith("com.mitv.tvhome") || pkg.toLowerCase().contains("patchwall");
+    }
+
+    /**
+     * PatchWall отключаем всегда, когда главный экран — не он (заводской Android TV или наш лаунчер).
+     * Стандартные Google-лаунчеры отключаем, только если главным стоит сторонний лаунчер.
+     * Главный экран не трогаем никогда (иначе не будет «Домой»). Возвращает, сколько отключено.
+     */
+    public static int disableStock(Context c, Adb adb) {
+        String home = Pkgs.currentHome(c);
+        if (home.isEmpty() || isPatchWall(home)) return 0;
+        boolean customHome = !isStock(home);
+        java.util.Map<String, Pkgs.P> pkgs = Pkgs.map(c);
+        int n = 0;
+        for (Pkgs.P p : pkgs.values()) {
+            if (!p.installed || !p.enabled || p.pkg.equals(home)) continue;
+            boolean off = isPatchWall(p.pkg) || (customHome && isStock(p.pkg));
+            if (!off) continue;
+            adb.execSync("am force-stop " + p.pkg, false);
+            if (adb.execSync(Pkgs.cmdDisable(p.pkg), true).ok) { Pkgs.remember(c, 'd', p.pkg); n++; }
+        }
+        return n;
+    }
+
     public static L byId(String id) {
         for (L l : ALL) if (l.id.equals(id)) return l;
         return ALL.get(0);

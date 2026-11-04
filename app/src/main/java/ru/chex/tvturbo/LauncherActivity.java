@@ -123,7 +123,7 @@ public class LauncherActivity extends BaseActivity {
 
     private void restoreStock() {
         if (!Ui.needAdb(this)) return;
-        String[] stock = {"com.google.android.tvlauncher", "com.google.android.apps.tv.launcherx", "com.google.android.leanbacklauncher", "com.mitv.tvhome.atv"};
+        String[] stock = Launchers.STOCK;
         adb.background(() -> {
             for (String p : stock) adb.execSync(Pkgs.cmdEnable(p), false);
             String comp = null;
@@ -154,8 +154,10 @@ public class LauncherActivity extends BaseActivity {
         if (!r.ok) return "✖ Ошибка установки " + l.name + ": " + r.out;
         st.on("Делаю " + l.name + " главным экраном…");
         String comp = homeComponent(c, l.pkg);
-        if (comp != null && adb.execSync("cmd package set-home-activity " + comp, true).ok)
-            return "✔ " + l.name + " установлен и стал главным экраном. Нажми «Домой»!";
+        if (comp != null && adb.execSync("cmd package set-home-activity " + comp, true).ok) {
+            int off = Launchers.disableStock(c, adb);   // PatchWall и стандартные лаунчеры больше не всплывут
+            return "✔ " + l.name + " установлен и стал главным экраном" + (off > 0 ? ", PatchWall отключён" : "") + ". Нажми «Домой»!";
+        }
         return "✔ " + l.name + " установлен. Нажми «Домой» и выбери его → «Всегда».";
     }
 
