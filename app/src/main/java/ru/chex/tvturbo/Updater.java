@@ -88,8 +88,7 @@ public final class Updater {
             // после установки ТВ закроет старую версию; новая запустится командой ниже
             adb.background(() -> {
                 Adb.Result r = adb.installSync(f);
-                if (r.ok) adb.execSync("monkey -p " + c.getPackageName() + " -c android.intent.category.LEANBACK_LAUNCHER 1", false);
-                else say(adb, l, "✖ Не установилось: " + r.out);
+                if (!r.ok) say(adb, l, "✖ Не установилось: " + r.out); // при успехе приложение откроется само (MY_PACKAGE_REPLACED)
             });
         }).start();
     }

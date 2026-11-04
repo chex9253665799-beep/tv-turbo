@@ -47,7 +47,23 @@ public final class Adb {
     private Adb(Context app) { this.app = app; }
 
     public boolean isConnected() { return dadb != null; }
-    public String getLog() { synchronized (log) { return log.toString(); } }
+    public String getLog() { synchronized (log) { if (log.length() == 0) loadLog(); return log.toString(); } }
+
+    // журнал хранится в файле — переживает перезагрузку ТВ
+    private File logFile() { return new File(app.getFilesDir(), "journal.txt"); }
+
+    private void loadLog() {
+        try (java.io.FileInputStream in = new java.io.FileInputStream(logFile())) {
+            byte[] b = new byte[(int) Math.min(logFile().length(), 60_000)];
+            int n = in.read(b);
+            if (n > 0) log.append(new String(b, 0, n, "UTF-8"));
+        } catch (Throwable ignored) { }
+    }
+
+    private void saveLog() {
+        try (java.io.FileOutputStream o = new java.io.FileOutputStream(logFile())) { o.write(log.toString().getBytes("UTF-8")); }
+        catch (Throwable ignored) { }
+    }
 
     public void addListener(Listener l) { listeners.add(l); }
     public void removeListener(Listener l) { listeners.remove(l); }
@@ -59,6 +75,15 @@ public final class Adb {
     private SharedPreferences prefs() { return app.getSharedPreferences("adb", Context.MODE_PRIVATE); }
 
     // ---------- подключение ----------
+
+    /** Подключение с повторами (после включения ТВ отладка поднимается не сразу). Только из worker. */
+    public boolean connectWithRetry(int attempts, int pauseMs) {
+        for (int i = 0; i < attempts; i++) {
+            if (dadb != null || connectNow() == null) return true;
+            try { Thread.sleep(pauseMs); } catch (InterruptedException e) { return false; }
+        }
+        return false;
+    }
 
     public void connect(Callback cb) {
         worker.execute(() -> {
@@ -165,6 +190,7 @@ public final class Adb {
                 boolean ok = r.getExitCode() == 0
                         && !out.contains("Exception") && !out.startsWith("Error") && !out.contains("Failure")
                         && !out.contains("Unknown package");
+                if (ok) try { Profile.observe(app, cmd); } catch (Throwable ignored) { }
                 if (logIt) logLine((ok ? "$ " : "✖ ") + cmd + (out.isEmpty() ? "" : "\n   " + out.replace("\n", "\n   ")));
                 return new Result(ok, out);
             } catch (Throwable t) {
@@ -203,9 +229,12 @@ public final class Adb {
     }
 
     void logLine(String line) {
+        String stamped = new java.text.SimpleDateFormat("dd.MM HH:mm:ss", java.util.Locale.US).format(new java.util.Date()) + "  " + line;
         synchronized (log) {
-            log.append(line).append('\n');
-            if (log.length() > 20_000) log.delete(0, log.length() - 15_000);
+            if (log.length() == 0) loadLog();
+            log.append(stamped).append('\n');
+            if (log.length() > 60_000) log.delete(0, log.length() - 40_000);
+            saveLog();
         }
         main.post(() -> { for (Listener l : new ArrayList<>(listeners)) l.onLog(line); });
     }

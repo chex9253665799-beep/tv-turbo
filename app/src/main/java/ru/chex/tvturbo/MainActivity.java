@@ -52,11 +52,13 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
 
         LinearLayout bottom = findViewById(R.id.bottom);
         small(bottom, "🔌  Подключиться", this::connect).setOnLongClickListener(v -> { askTarget(); return true; });
+        small(bottom, "🛡  Страж", this::guardDialog);
         small(bottom, "📜  Журнал", this::showLog);
         small(bottom, "🔍  Размер интерфейса", this::chooseScale);
         small(bottom, "🔄  Обновления · v" + Updater.currentName(this), this::updatesDialog);
         small(bottom, "❓  Помощь", () -> Ui.info(this, "Как включить отладку", HELP));
 
+        if (Guard.enabled(this)) Guard.schedule(this);
         auto.requestFocus();
         if (!adb.isConnected()) connect();
         else Updater.checkAndInstall(this, false, this::updateStatus);
@@ -157,8 +159,41 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
         adb.connect((ok, out) -> {
             onState(ok);
             if (!ok) Ui.info(this, "Нет подключения", out + "\n\n" + HELP_SHORT);
-            else Updater.checkAndInstall(this, false, this::updateStatus);
+            else {
+                // чтобы ТВ не усыплял «Стража» и разрешал ему работать в фоне
+                adb.run("dumpsys deviceidle whitelist +" + getPackageName() + "; cmd appops set " + getPackageName() + " RUN_ANY_IN_BACKGROUND allow", null);
+                Updater.checkAndInstall(this, false, this::updateStatus);
+            }
         });
+    }
+
+    private void guardDialog() {
+        boolean on = Guard.enabled(this), boot = Guard.openOnBoot(this);
+        long last = Guard.lastRun(this);
+        String when = last == 0 ? "ещё не было" : new java.text.SimpleDateFormat("dd.MM HH:mm", java.util.Locale.US).format(new java.util.Date(last));
+        String msg = "Страж сам запускается при включении ТВ и каждые 30 минут: возвращает всё, что слетело, и следит за памятью.\n\n"
+                + "Последняя проверка: " + when + " — " + Guard.lastResult(this) + "\n\n"
+                + "Что он охраняет:\n" + Profile.summary(this);
+        new AlertDialog.Builder(this)
+                .setTitle("🛡 Страж — " + (on ? "включён" : "выключен"))
+                .setMessage(msg + "\n\nОткрывать ТВ Турбо при включении ТВ: " + (boot ? "да" : "нет"))
+                .setPositiveButton("Проверить сейчас", (d, w) -> {
+                    if (!Ui.needAdb(this)) return;
+                    Ui.toast(this, "Проверяю…");
+                    adb.background(() -> {
+                        String r = Guard.check(this, false);
+                        adb.ui(() -> { updateStatus("🛡 " + r); Ui.info(this, "🛡 Страж", r); });
+                    });
+                })
+                .setNeutralButton(on ? "Выключить стража" : "Включить стража", (d, w) -> {
+                    Guard.setEnabled(this, !on);
+                    Ui.toast(this, !on ? "Страж включён" : "Страж выключен");
+                })
+                .setNegativeButton(boot ? "Не открывать при вкл." : "Открывать при вкл. ТВ", (d, w) -> {
+                    Guard.setOpenOnBoot(this, !boot);
+                    Ui.toast(this, !boot ? "Будет открываться при включении ТВ" : "Не будет открываться при включении");
+                })
+                .show();
     }
 
     private void updateStatus(String text) {
@@ -247,7 +282,7 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
         new AlertDialog.Builder(this)
                 .setTitle("Вернуть отключённое")
                 .setMessage(names.toString() + "\nАнимации, DNS и YouTube-обход возвращаются в «Ускорении» и «YouTube».")
-                .setPositiveButton(items[0], (d, w) -> adb.runAll(cmds, (ok, out) -> { Pkgs.clearChanges(this); Ui.toast(this, out); }))
+                .setPositiveButton(items[0], (d, w) -> adb.runAll(cmds, (ok, out) -> { Pkgs.clearChanges(this); Profile.clearPackages(this); Ui.toast(this, out); }))
                 .setNeutralButton(items[1], (d, w) -> open(AppsActivity.class, true))
                 .setNegativeButton("Отмена", null)
                 .show();
