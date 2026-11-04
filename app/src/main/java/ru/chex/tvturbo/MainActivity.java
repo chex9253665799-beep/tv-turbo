@@ -87,7 +87,9 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
         circle.setShape(GradientDrawable.OVAL);
         ic.setBackground(circle);
         int s = Ui.dp(this, 46);
-        t.addView(ic, new LinearLayout.LayoutParams(s, s));
+        LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(s, s);
+        ilp.gravity = Gravity.CENTER_VERTICAL;
+        t.addView(ic, ilp);
 
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
@@ -120,6 +122,7 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
         Button b = new Button(this, null, 0, R.style.BigButton);
         b.setText(text);
         b.setTextSize(15);
+        b.setSingleLine(true);
         int p = Ui.dp(this, 10);
         b.setPadding(Ui.dp(this, 18), p, Ui.dp(this, 18), p);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);

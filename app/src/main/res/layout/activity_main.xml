@@ -63,7 +63,7 @@
         android:background="@drawable/card_bg"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="22dp">
+        android:padding="16dp">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -117,6 +117,7 @@
         android:id="@+id/grid1"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:minHeight="78dp"
         android:layout_marginTop="18dp"
         android:layout_weight="1"
         android:orientation="horizontal" />
@@ -125,15 +126,21 @@
         android:id="@+id/grid2"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:minHeight="78dp"
         android:layout_marginTop="14dp"
         android:layout_weight="1"
         android:orientation="horizontal" />
 
     <!-- нижняя строка -->
-    <LinearLayout
-        android:id="@+id/bottom"
+    <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:orientation="horizontal" />
+        android:layout_marginTop="14dp"
+        android:scrollbars="none">
+        <LinearLayout
+            android:id="@+id/bottom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
 </LinearLayout>
