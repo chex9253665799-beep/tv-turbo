@@ -397,6 +397,10 @@ public final class Doctor {
             if (f.length == 4 && f[3].matches("mmcblk\\d+|sd[a-z]")) try { diskKb = Math.max(diskKb, Long.parseLong(f[2])); } catch (Throwable ignored) { }
         }
         if (diskKb == 0) try { diskKb = Long.parseLong(sh(adb, "cat /sys/block/mmcblk0/size 2>/dev/null").trim()) / 2; } catch (Throwable ignored) { }
+        if (diskKb == 0 && android.os.Build.VERSION.SDK_INT >= 26) try {   // Android 8+: общий объём накопителя от системы
+            android.app.usage.StorageStatsManager ssm = (android.app.usage.StorageStatsManager) c.getSystemService(Context.STORAGE_STATS_SERVICE);
+            diskKb = ssm.getTotalBytes(android.os.storage.StorageManager.UUID_DEFAULT) / 1024;
+        } catch (Throwable ignored) { }
         if (diskKb > 0) {
             double gb = diskKb * 1024.0 / 1_000_000_000.0;
             int nominal = 4;
