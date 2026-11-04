@@ -108,6 +108,38 @@ public final class Pkgs {
 
     public static void clearChanges(Context c) { sp(c).edit().remove("list").apply(); }
 
+    /**
+     * Что можно вернуть — по реальному состоянию ТВ, а не только по журналу:
+     * все пакеты со статусом «отключено пользователем» (так их отключает pm disable-user и это
+     * переживает перезагрузку), плюс удалённые для пользователя из журнала и из базы мусора.
+     * Пакеты, которые производитель выключил сам (статус «отключено»), не трогаем.
+     */
+    public static List<P> restorable(Context c) {
+        PackageManager pm = c.getPackageManager();
+        Set<String> journal = new HashSet<>();
+        for (String e : changes(c)) journal.add(e.substring(2));
+        List<P> out = new ArrayList<>();
+        for (P p : list(c)) {
+            if (p.installed && !p.enabled) {
+                int st;
+                try { st = pm.getApplicationEnabledSetting(p.pkg); } catch (Throwable t) { st = -1; }
+                if (st == PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER || journal.contains(p.pkg)) out.add(p);
+            } else if (!p.installed && (journal.contains(p.pkg) || Bloat.find(p.pkg) != null)) {
+                out.add(p);
+            }
+        }
+        return out;
+    }
+
+    public static List<String> restoreCommandsFor(List<P> ps) {
+        List<String> cmds = new ArrayList<>();
+        for (P p : ps) {
+            if (!p.installed) cmds.add(cmdReinstall(p.pkg));
+            cmds.add(cmdEnable(p.pkg));
+        }
+        return cmds;
+    }
+
     /** Команды, которые возвращают всё изменённое этим приложением. */
     public static List<String> restoreCommands(Context c) {
         List<String> cmds = new ArrayList<>();

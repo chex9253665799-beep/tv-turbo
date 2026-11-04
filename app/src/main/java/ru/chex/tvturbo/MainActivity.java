@@ -231,11 +231,31 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
 
     private void restoreAll() {
         if (!Ui.needAdb(this)) return;
-        List<String> cmds = Pkgs.restoreCommands(this);
-        if (cmds.isEmpty()) { Ui.info(this, "Вернуть всё", "Это приложение пока ничего не отключало."); return; }
-        Ui.confirm(this, "Вернуть всё?", "Включить обратно всё, что было отключено или удалено через ТВ Турбо (" + Pkgs.changes(this).size() + " шт.).\n"
-                + "Анимации и DNS возвращаются в «Ускорении».", () ->
-                adb.runAll(cmds, (ok, out) -> { Pkgs.clearChanges(this); Ui.toast(this, out); }));
+        List<Pkgs.P> ps = Pkgs.restorable(this);
+        List<String> cmds = Pkgs.restoreCommandsFor(ps);
+        for (String e : Pkgs.changes(this)) if (e.startsWith("b:")) cmds.add(Pkgs.cmdAllowBackground(e.substring(2)));
+        if (cmds.isEmpty()) { Ui.info(this, "Вернуть всё", "Отключённых или удалённых приложений нет — возвращать нечего."); return; }
+
+        StringBuilder names = new StringBuilder();
+        int n = 0;
+        for (Pkgs.P p : ps) {
+            if (n++ < 12) names.append("• ").append(p.label).append(p.installed ? "" : " (удалено)").append('\n');
+        }
+        if (ps.size() > 12) names.append("…и ещё ").append(ps.size() - 12).append('\n');
+
+        String[] items = {"Вернуть всё (" + ps.size() + " шт.)", "Выбрать, что вернуть"};
+        new AlertDialog.Builder(this)
+                .setTitle("Вернуть отключённое")
+                .setMessage(names.toString() + "\nАнимации, DNS и YouTube-обход возвращаются в «Ускорении» и «YouTube».")
+                .setPositiveButton(items[0], (d, w) -> adb.runAll(cmds, (ok, out) -> { Pkgs.clearChanges(this); Ui.toast(this, out); }))
+                .setNeutralButton(items[1], (d, w) -> open(AppsActivity.class, true))
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void open(Class<?> c, boolean disabledOnly) {
+        if (!Ui.needAdb(this)) return;
+        startActivity(new Intent(this, c).putExtra("disabled_only", disabledOnly));
     }
 
     private void updateRam() {

@@ -15,6 +15,7 @@ public class AppsActivity extends ListScreen {
 
     @Override
     protected void setup() {
+        if (getIntent().getBooleanExtra("disabled_only", false)) filter = 3;
         title.setText("📦 Все приложения");
         hint.setText("Нажми на приложение, чтобы выбрать действие.");
         filterBtn = Ui.action(this, actions, "Показать: " + FILTERS[filter], v -> {
