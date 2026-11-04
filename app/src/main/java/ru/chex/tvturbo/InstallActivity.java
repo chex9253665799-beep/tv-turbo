@@ -34,7 +34,7 @@ public class InstallActivity extends ListScreen {
     protected void setup() {
         title.setText("⬇ Установка приложений");
         hint.setText("Загружаю каталог…");
-        Ui.action(this, actions, "▶  YouTube в России", v -> youtube());
+        Ui.action(this, actions, "▶  YouTube в России", v -> startActivity(new android.content.Intent(this, YouTubeActivity.class).putExtra("autostart", true)));
         Ui.action(this, actions, "⬇  Установить отмеченные", v -> installChecked());
         Ui.action(this, actions, "🎨  Лаунчеры", v -> startActivity(new android.content.Intent(this, LauncherActivity.class)));
         Ui.action(this, actions, "🔗  APK по ссылке", v -> askUrl());

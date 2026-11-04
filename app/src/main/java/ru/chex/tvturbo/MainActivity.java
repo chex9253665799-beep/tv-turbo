@@ -42,11 +42,13 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
 
         LinearLayout g1 = findViewById(R.id.grid1), g2 = findViewById(R.id.grid2);
         View auto = tile(g1, "⚡", "Авто-режим", "Всё сразу в одно нажатие", 0xFFFFB020, 0xFFFF5A5F, () -> open(AutoActivity.class));
+        tile(g1, "▶", "YouTube", "Без тормозов в России", 0xFFFF3B30, 0xFFB00020, () -> open(YouTubeActivity.class));
+        tile(g1, "🎨", "Главный экран", "Красивые лаунчеры с превью", 0xFF00B8D9, 0xFF7B4DFF, () -> open(LauncherActivity.class));
         tile(g1, "🧹", "Очистка", "Реклама, телеметрия, мусор", 0xFF3DDC84, 0xFF14B8A6, () -> open(CleanActivity.class));
-        tile(g1, "🚀", "Ускорение", "Анимации, кэш, память, DNS", 0xFF2E6BFF, 0xFF7B4DFF, () -> open(SpeedActivity.class));
-        tile(g2, "⬇", "Установка", "YouTube, RuStore, лаунчеры", 0xFFE040FB, 0xFF7B4DFF, () -> open(InstallActivity.class));
-        tile(g2, "📦", "Приложения", "Отключить, удалить, запретить фон", 0xFF00B8D9, 0xFF2E6BFF, () -> open(AppsActivity.class));
-        tile(g2, "↩", "Вернуть всё", "Откатить любые изменения", 0xFF8A93A6, 0xFF4B5563, this::restoreAll);
+        tile(g2, "🚀", "Ускорение", "Анимации, кэш, память, DNS", 0xFF2E6BFF, 0xFF7B4DFF, () -> open(SpeedActivity.class));
+        tile(g2, "⬇", "Установка", "RuStore и полезное", 0xFFE040FB, 0xFF7B4DFF, () -> open(InstallActivity.class));
+        tile(g2, "📦", "Приложения", "Отключить, удалить, фон", 0xFF00B8D9, 0xFF2E6BFF, () -> open(AppsActivity.class));
+        tile(g2, "↩", "Вернуть всё", "Откатить изменения", 0xFF8A93A6, 0xFF4B5563, this::restoreAll);
 
         LinearLayout bottom = findViewById(R.id.bottom);
         small(bottom, "🔌  Подключиться", this::connect).setOnLongClickListener(v -> { askTarget(); return true; });
@@ -69,31 +71,31 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
         t.setBackgroundResource(R.drawable.tile_bg);
         t.setFocusable(true);
         t.setClickable(true);
-        int p = Ui.dp(this, 18);
-        t.setPadding(p, Ui.dp(this, 12), p, Ui.dp(this, 12));
+        int p = Ui.dp(this, 14);
+        t.setPadding(p, Ui.dp(this, 10), p, Ui.dp(this, 10));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
-        if (row.getChildCount() > 0) lp.setMarginStart(Ui.dp(this, 14));
+        if (row.getChildCount() > 0) lp.setMarginStart(Ui.dp(this, 12));
         t.setLayoutParams(lp);
 
         TextView ic = new TextView(this);
         ic.setText(icon);
-        ic.setTextSize(24);
+        ic.setTextSize(20);
         ic.setGravity(Gravity.CENTER);
         GradientDrawable circle = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{c1, c2});
         circle.setShape(GradientDrawable.OVAL);
         ic.setBackground(circle);
-        int s = Ui.dp(this, 54);
+        int s = Ui.dp(this, 46);
         t.addView(ic, new LinearLayout.LayoutParams(s, s));
 
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
-        clp.setMarginStart(Ui.dp(this, 16));
+        clp.setMarginStart(Ui.dp(this, 12));
         t.addView(col, clp);
 
         TextView tt = new TextView(this);
         tt.setText(title);
-        tt.setTextSize(20);
+        tt.setTextSize(18);
         tt.setTextColor(0xFFECEFF4);
         tt.setTypeface(tt.getTypeface(), android.graphics.Typeface.BOLD);
         tt.setSingleLine(true);

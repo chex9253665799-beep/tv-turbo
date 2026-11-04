@@ -71,14 +71,16 @@ public class LauncherActivity extends BaseActivity {
             if (actions.getChildCount() > 0) actions.getChildAt(0).requestFocus();
         });
 
-        Ui.action(this, actions, "⬇  Установить и сделать главным", v -> installCurrent());
-        if (getIntent().getBooleanExtra(EXTRA_CHOOSE_ONLY, false))
-            Ui.action(this, actions, "★  Выбрать для авто-режима", v -> {
+        boolean chooseOnly = getIntent().getBooleanExtra(EXTRA_CHOOSE_ONLY, false);
+        if (!chooseOnly) Ui.action(this, actions, "⬇  Установить и сделать главным", v -> installCurrent());
+        if (chooseOnly)
+            Ui.action(this, actions, "✔  Выбрать этот и продолжить", v -> {
                 Launchers.choose(this, current.id);
-                Ui.toast(this, "Авто-режим поставит " + current.name);
+                setResult(RESULT_OK);
                 finish();
             });
-        Ui.action(this, actions, "↩  Вернуть стандартный", v -> restoreStock());
+        if (!chooseOnly) Ui.action(this, actions, "↩  Вернуть стандартный", v -> restoreStock());
+        if (chooseOnly) hint.setText("Шаг 1 из 2: выбери главный экран — справа видно, как он выглядит. Потом авто-режим всё сделает сам.");
 
         show(Launchers.chosen(this));
         list.requestFocus();

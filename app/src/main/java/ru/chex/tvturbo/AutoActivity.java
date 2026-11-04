@@ -26,6 +26,7 @@ public class AutoActivity extends ListScreen {
             "Выключить заставку и фоновый поиск Wi-Fi/BT",
             "Скачать красивый лаунчер без рекламы",  // имя лаунчера подставляется в onResume
             "Сделать его главным экраном",
+            "Настроить YouTube: обход замедления + SmartTube",
             "Очистить кэш и освободить память"
     };
 
@@ -36,10 +37,13 @@ public class AutoActivity extends ListScreen {
         title.setText("⚡ Авто-режим");
         hint.setText("Сделаю всё сам: ускорю ТВ, уберу рекламу и мусор, поставлю красивый главный экран.\n"
                 + "Трогаю только безопасное. Всё можно вернуть кнопкой «Вернуть всё».");
-        Ui.action(this, actions, "⚡  Запустить", v -> start(true));
+        // сначала — выбор лаунчера с картинками, потом сразу запуск
+        Ui.action(this, actions, "⚡  Запустить", v -> {
+            if (running || !Ui.needAdb(this)) return;
+            startActivityForResult(new Intent(this, LauncherActivity.class)
+                    .putExtra(LauncherActivity.EXTRA_CHOOSE_ONLY, true), REQ_LAUNCHER);
+        });
         Ui.action(this, actions, "Без смены лаунчера", v -> start(false));
-        Ui.action(this, actions, "🎨  Выбрать лаунчер", v -> startActivity(
-                new Intent(this, LauncherActivity.class).putExtra(LauncherActivity.EXTRA_CHOOSE_ONLY, true)));
         for (String s : STEPS) {
             Ui.Row r = new Ui.Row();
             r.mark = "○";
@@ -48,6 +52,14 @@ public class AutoActivity extends ListScreen {
         }
         adapter.notifyDataSetChanged();
         actions.getChildAt(0).requestFocus();
+    }
+
+    private static final int REQ_LAUNCHER = 7;
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req == REQ_LAUNCHER && res == RESULT_OK) start(true);
     }
 
     @Override
@@ -115,12 +127,19 @@ public class AutoActivity extends ListScreen {
             if (withLauncher) done += launcher();
             else { mark(4, "–", "пропущено", 0xFF8A93A6, null); mark(5, "–", "пропущено", 0xFF8A93A6, null); }
 
-            // 7. кэш и память
+            // 7. YouTube
             mark(6, "⏳", "", 0, null);
+            boolean yt = YouTube.setup(this, adb, (st, state, text) ->
+                    mark(6, "⏳", (st == 0 ? "ByeByeDPI: " : st == 1 ? "SmartTube: " : "") + (text.length() > 30 ? text.substring(0, 30) : text), 0xFF8A93A6, null));
+            if (yt) { mark(6, "✔", "YouTube работает", 0xFF3DDC84, null); done++; }
+            else mark(6, "⚠", "частично — открой «YouTube»", 0xFFFFB020, null);
+
+            // 8. кэш и память
+            mark(7, "⏳", "", 0, null);
             List<String> clean = new ArrayList<>();
             clean.add("pm trim-caches 999G");
             clean.add("am kill-all");
-            done += step(6, clean, null);
+            done += step(7, clean, null);
 
             int total = withLauncher ? STEPS.length : STEPS.length - 2;
             int d = done;
