@@ -20,12 +20,12 @@ public final class Launchers {
     public static final String BUILTIN = "home";
 
     public static final List<L> ALL = Arrays.asList(
-        new L(BUILTIN, "ТВ Турбо Дом", "ru.chex.tvturbo", "", "",
-            "https://raw.githubusercontent.com/chex9253665799-beep/tv-turbo/main/docs/home.png",
-            "Наш главный экран в стиле PatchWall — но бесплатный: без рекламы, подписок и чужих рекомендаций. "
-                + "Только твои приложения, сами разложены по разделам: Кино, ТВ, Видео, Детям, Музыка. "
-                + "Ряд «Любимые», крупные плитки, часы, кнопки «Источник» и «Настройки». Работает на любом Android TV.",
-            "Как PatchWall · бесплатно · свои приложения"),
+        new L(BUILTIN, "MiVision TV", "ru.chex.tvturbo", "", "",
+            "https://raw.githubusercontent.com/chex9253665799-beep/tv-turbo/main/docs/mivision.png",
+            "Наш главный экран в стиле Xiaomi TV — бесплатно, без рекламы и подписок. Фильмы и сериалы с обложками "
+                + "из твоих приложений (КИОН, Иви, Wink…), только установленные приложения, настоящая погода, ТВ-каналы, поиск. "
+                + "Работает на любом Android TV.",
+            "Стиль Xiaomi · фильмы из твоих приложений"),
         new L("ltv", "LTvLauncher", "com.leanbitlab.ltvL",
             "leanbitlab-org/LtvLauncher", "universal",
             "https://raw.githubusercontent.com/leanbitlab-org/LtvLauncher/master/fastlane/metadata/android/en-US/images/tvScreenshots/screenshot_1.png",

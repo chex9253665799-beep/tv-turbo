@@ -151,11 +151,7 @@ public class LauncherActivity extends BaseActivity {
         if (Launchers.BUILTIN.equals(l.id)) {
             // встроенный — ставить не нужно, только назначить главным
             String comp = c.getPackageName() + "/" + HomeActivity.class.getName();
-            if (adb.execSync("cmd package set-home-activity " + comp, true).ok) {
-                int off = Launchers.disableStock(c, adb);
-                return "✔ ТВ Турбо Дом стал главным экраном" + (off > 0 ? ", PatchWall отключён" : "") + ". Нажми «Домой»!";
-            }
-            return "✔ Нажми «Домой» и выбери «ТВ Турбо Дом» → «Всегда».";
+            return makeHome(c, adb, comp, c.getPackageName(), "MiVision TV", st);
         }
         File f = new File(c.getCacheDir(), "launcher.apk");
         try {
@@ -171,11 +167,37 @@ public class LauncherActivity extends BaseActivity {
         if (!r.ok) return "✖ Ошибка установки " + l.name + ": " + r.out;
         st.on("Делаю " + l.name + " главным экраном…");
         String comp = homeComponent(c, l.pkg);
-        if (comp != null && adb.execSync("cmd package set-home-activity " + comp, true).ok) {
-            int off = Launchers.disableStock(c, adb);   // PatchWall и стандартные лаунчеры больше не всплывут
-            return "✔ " + l.name + " установлен и стал главным экраном" + (off > 0 ? ", PatchWall отключён" : "") + ". Нажми «Домой»!";
-        }
+        if (comp != null) return makeHome(c, adb, comp, l.pkg, l.name, st);
         return "✔ " + l.name + " установлен. Нажми «Домой» и выбери его → «Всегда».";
+    }
+
+    /**
+     * Назначить главный экран и ПРОВЕРИТЬ, что получилось. Если прошивка не послушалась команды —
+     * отключаем заводские лаунчеры, тогда «Домой» откроет нужный без вариантов.
+     */
+    static String makeHome(android.content.Context c, Adb adb, String comp, String pkg, String name, Status st) {
+        adb.execSync("cmd package set-home-activity " + comp, true);
+        if (!homeIs(c, pkg)) adb.execSync("cmd package set-home-activity --user 0 " + comp, true);
+        if (!homeIs(c, pkg)) {
+            st.on("Прошивка упрямится — отключаю заводской лаунчер…");
+            for (String s : Launchers.STOCK) {
+                if (s.equals(pkg)) continue;
+                adb.execSync("am force-stop " + s + " 2>/dev/null; " + Pkgs.cmdDisable(s) + " 2>/dev/null", true);
+                Pkgs.remember(c, 'd', s);
+            }
+            adb.execSync("cmd package set-home-activity " + comp, true);
+        }
+        int off = Launchers.disableStock(c, adb);       // PatchWall больше не всплывёт
+        adb.execSync("input keyevent 3", false);         // сразу показать новый главный экран
+        if (homeIs(c, pkg)) return "✔ " + name + " стал главным экраном" + (off > 0 ? ", PatchWall отключён" : "") + ".";
+        return "⚠ Нажми «Домой» и выбери «" + name + "» → «Всегда».";
+    }
+
+    static boolean homeIs(android.content.Context c, String pkg) {
+        Intent i = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+        ResolveInfo ri = c.getPackageManager().resolveActivity(i, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+        return ri != null && ri.activityInfo != null && pkg.equals(ri.activityInfo.packageName)
+                && (!pkg.equals(c.getPackageName()) || ri.activityInfo.name.endsWith("HomeActivity"));
     }
 
     static String homeComponent(android.content.Context c, String pkg) {

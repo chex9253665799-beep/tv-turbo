@@ -2,7 +2,7 @@ name: Сборка APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, mivision ]
   workflow_dispatch:
 
 permissions:
@@ -42,6 +42,7 @@ jobs:
           path: TvTurbo.apk
 
       - name: Выложить в релиз «latest»
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest

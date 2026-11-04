@@ -132,6 +132,34 @@ public final class Adb {
     /** Для фоновых задач (диагностика): выполнить и получить вывод. Только из потока worker. */
     public Result execSync(String cmd, boolean logIt) { return execNow(cmd, logIt); }
 
+    /**
+     * Сырые байты вывода команды (например картинка через «content read»). Можно из любого потока:
+     * отдельный поток ADB поверх уже открытого подключения. null — нет подключения или ошибка.
+     */
+    public byte[] readBytes(String cmd) {
+        Dadb d = dadb;
+        if (d == null) return null;
+        dadb.AdbStream s = null;
+        try {
+            s = d.open("exec:" + cmd);
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[32768];
+            int n;
+            while ((n = s.getSource().read(buf)) > 0) bo.write(buf, 0, n);
+            return bo.size() > 0 ? bo.toByteArray() : null;
+        } catch (Throwable t) {
+            return null;
+        } finally {
+            if (s != null) try { s.close(); } catch (Throwable ignored) { }
+        }
+    }
+
+    /** Текст вывода команды из любого потока (для каталога и диагностики, без журнала). */
+    public String readText(String cmd) {
+        byte[] b = readBytes(cmd);
+        try { return b == null ? "" : new String(b, "UTF-8"); } catch (Throwable t) { return ""; }
+    }
+
     /** Запустить задачу в очереди команд. */
     public void background(Runnable r) { worker.execute(r); }
 
