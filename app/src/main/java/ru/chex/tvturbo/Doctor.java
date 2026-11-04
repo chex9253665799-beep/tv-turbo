@@ -478,6 +478,10 @@ public final class Doctor {
         String mat = valueOf(o, "Матрица (из сервисного меню)");
         if (mat.isEmpty()) mat = valueOf(o, "Матрица (панель)");
         if (!mat.isEmpty() && !mat.startsWith("система")) sum.append("\nМатрица: ").append(mat);
+        String board = ServiceMenu.savedValue(c, "Board");
+        if (!board.isEmpty()) sum.append("\nПлата: ").append(board);
+        String wv = ServiceMenu.savedValue(c, "Widevine Key");
+        if (!wv.isEmpty()) sum.append("\nЗащита видео (Widevine): ").append(wv.equalsIgnoreCase("true") ? "есть — HD в онлайн-кино работает" : "НЕТ — онлайн-кино будет в плохом качестве или с ошибкой DRM");
         sum.append("\nПрошивка: Android ").append(first(p, "ro.build.version.release")).append(", ").append(first(p, "ro.build.display.id"));
         o.add(0, new String[]{"Кратко", "Этот телевизор", sum.toString()});
 

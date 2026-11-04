@@ -48,7 +48,7 @@ public final class ServiceMenu {
     /** Информационные пункты внутри меню, которые можно открыть. */
     private static final Pattern INFO_ITEM = Pattern.compile("(?i)^(panel ?info|ursa ?info|board ?info|system ?info|version ?info|sw ?info|information)$");
     /** Что считаем важным на экране меню. */
-    private static final Pattern KEY = Pattern.compile("(?i)(panel|матриц|lcd|board|chassis|platform|model|project|customer|odm|sw ?ver|software|firmware|version|boot|mboot|build|date|hour|time|backlight|t-?con|pq|ini|serial)");
+    private static final Pattern KEY = Pattern.compile("(?i)(panel|матриц|lcd|board|chassis|platform|model|project|customer|odm|sw ?ver|software|firmware|version|boot|mboot|build|date|hour|time|backlight|t-?con|pq|ini|serial|key|hdcp|widevine|playready|netflix|drm|ci\\+)");
 
     /** Поиск кандидатов. Можно в любом потоке. */
     public static List<Found> find(Context c) {
@@ -100,6 +100,22 @@ public final class ServiceMenu {
             g.lines.addAll(main.lines);
             g.shot = main.shot;
             addFacts(g, main, false);
+            // дочитать строки ниже экрана: «вниз» только двигает подсветку, ничего не меняет
+            if (main.nodes.size() >= 6) {
+                adb.execSync("for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do input keyevent 20; done", false);
+                sleep(1200);
+                Page more = read(adb);
+                for (String l : more.lines) if (!g.lines.contains(l)) g.lines.add(l);
+                int before = g.facts.size();
+                addFacts(g, more, false);
+                // убрать повторы
+                List<String[]> uniq = new ArrayList<>();
+                Set<String> keys = new LinkedHashSet<>();
+                for (String[] f : g.facts) if (keys.add(f[0] + "\u0001" + f[1])) uniq.add(f);
+                g.facts.clear();
+                g.facts.addAll(uniq);
+                if (more.shot != null && g.facts.size() > before) g.shot = more.shot;
+            }
             // открыть только информационные пункты (Panel Info, Ursa Info…) и прочитать их
             for (Node n : main.nodes) {
                 if (!INFO_ITEM.matcher(n.text.trim()).matches()) continue;
@@ -266,6 +282,12 @@ public final class ServiceMenu {
     public static String savedPanel(Context c) {
         for (String[] f : savedFacts(c))
             if ((f[0] + " " + f[1]).toLowerCase(Locale.ROOT).matches(".*(panel|матриц|lcd).*") && !f[1].trim().isEmpty()) return f[1].trim();
+        return "";
+    }
+
+    /** Значение из последнего считывания по названию (например «Board»), иначе "". */
+    public static String savedValue(Context c, String key) {
+        for (String[] f : savedFacts(c)) if (f[0].trim().equalsIgnoreCase(key)) return f[1].trim();
         return "";
     }
 
