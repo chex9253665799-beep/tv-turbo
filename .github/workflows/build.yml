@@ -46,6 +46,9 @@ jobs:
         with:
           tag_name: latest
           name: ТВ Турбо (последняя сборка)
+          body: |
+            versionCode=${{ github.run_number }}
+            ${{ github.event.head_commit.message }}
           prerelease: false
           make_latest: true
           files: TvTurbo.apk

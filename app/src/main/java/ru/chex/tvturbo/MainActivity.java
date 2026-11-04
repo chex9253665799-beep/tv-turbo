@@ -52,10 +52,12 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
         small(bottom, "🔌  Подключиться", this::connect).setOnLongClickListener(v -> { askTarget(); return true; });
         small(bottom, "📜  Журнал", this::showLog);
         small(bottom, "🔍  Размер интерфейса", this::chooseScale);
-        small(bottom, "❓  Как включить отладку", () -> Ui.info(this, "Как включить отладку", HELP));
+        small(bottom, "🔄  Обновления · v" + Updater.currentName(this), this::updatesDialog);
+        small(bottom, "❓  Помощь", () -> Ui.info(this, "Как включить отладку", HELP));
 
         auto.requestFocus();
         if (!adb.isConnected()) connect();
+        else Updater.checkAndInstall(this, false, this::updateStatus);
     }
 
     // ---------- плитки ----------
@@ -153,7 +155,34 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
         adb.connect((ok, out) -> {
             onState(ok);
             if (!ok) Ui.info(this, "Нет подключения", out + "\n\n" + HELP_SHORT);
+            else Updater.checkAndInstall(this, false, this::updateStatus);
         });
+    }
+
+    private void updateStatus(String text) {
+        status.setText(text);
+        status.setTextColor(0xFF7FB2FF);
+    }
+
+    private void updatesDialog() {
+        boolean auto = Updater.isAuto(this);
+        String[] items = {
+                "🔄  Проверить сейчас",
+                (auto ? "☑" : "☐") + "  Обновлять автоматически при запуске"
+        };
+        new AlertDialog.Builder(this)
+                .setTitle("Версия " + Updater.currentName(this))
+                .setItems(items, (d, w) -> {
+                    if (w == 0) {
+                        if (!Ui.needAdb(this)) return;
+                        Ui.toast(this, "Проверяю…");
+                        Updater.checkAndInstall(this, true, t -> { updateStatus(t); Ui.toast(this, t); });
+                    } else {
+                        Updater.setAuto(this, !auto);
+                        Ui.toast(this, !auto ? "Автообновление включено" : "Автообновление выключено");
+                    }
+                })
+                .setNegativeButton("Закрыть", null).show();
     }
 
     private void askTarget() {
