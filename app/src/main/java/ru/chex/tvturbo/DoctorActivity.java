@@ -24,6 +24,7 @@ public class DoctorActivity extends ListScreen {
         Ui.action(this, actions, "🔄  Проверить", v -> scan());
         Ui.action(this, actions, "📋  Паспорт ТВ", v -> showPassport());
         Ui.action(this, actions, "📱  Паспорт на телефон", v -> passportToPhone());
+        Ui.action(this, actions, "🔧  Сервисное меню", v -> serviceMenu());
         Ui.action(this, actions, "📖  Коды ошибок", v -> showCodes());
         scan();
     }
@@ -127,6 +128,84 @@ public class DoctorActivity extends ListScreen {
         for (Doctor.Item i : last.items)
             if (i.level >= Doctor.WARN) sb.append("• ").append(i.title).append('\n');
         return sb.length() == 0 ? "нет" : sb.toString();
+    }
+
+    // ------------------------------------------------------------ сервисное меню
+
+    private void serviceMenu() {
+        if (busy || !Ui.needAdb(this)) return;
+        busy = true;
+        hint.setText("Ищу сервисное (заводское) меню среди системных приложений…");
+        adb.background(() -> {
+            List<ServiceMenu.Found> menus = ServiceMenu.find(this);
+            adb.ui(() -> {
+                busy = false;
+                if (menus.isEmpty()) {
+                    hint.setText("Сервисное меню не найдено.");
+                    Ui.info(this, "🔧 Сервисное меню не найдено",
+                            "На этом ТВ заводское меню не вынесено в отдельное приложение (или спрятано в прошивке). "
+                                    + "Его можно открыть только секретной комбинацией на пульте — она своя для каждой модели. "
+                                    + "Ищи на 4PDA по кодовому имени из «Паспорта ТВ».");
+                    return;
+                }
+                String[] names = new String[menus.size()];
+                for (int i = 0; i < names.length; i++) names[i] = menus.get(i).label;
+                new AlertDialog.Builder(this).setTitle("🔧 Найдено меню: " + menus.size() + " (сверху — самое вероятное)")
+                        .setItems(names, (d, w) -> confirmGrab(menus.get(w)))
+                        .setNegativeButton("Отмена", null).show();
+            });
+        });
+    }
+
+    private void confirmGrab(ServiceMenu.Found m) {
+        Ui.confirm(this, "Считать сервисное меню?",
+                "Меню откроется на 3–5 секунд, программа прочитает с него данные (матрица, плата, версии), сделает снимок "
+                        + "и закроет кнопкой «Назад».\n\n⚠ Пока меню открыто — НЕ нажимай кнопки пульта: в заводском меню можно сбить настройки изображения.",
+                () -> grab(m));
+    }
+
+    private void grab(ServiceMenu.Found m) {
+        busy = true;
+        hint.setText("Открываю «" + m.label + "» и считываю… Не нажимай пульт.");
+        adb.background(() -> {
+            ServiceMenu.Grab g = ServiceMenu.grab(this, adb, m);
+            adb.ui(() -> { busy = false; showGrab(g); });
+        });
+    }
+
+    private void showGrab(ServiceMenu.Grab g) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        int pad = Ui.dp(this, 16);
+        box.setPadding(pad, pad / 2, pad, pad / 2);
+        TextView t = new TextView(this);
+        t.setTextSize(15);
+        StringBuilder sb = new StringBuilder();
+        if (g.error != null) sb.append("⚠ ").append(g.error).append("\n\n");
+        if (!g.facts.isEmpty()) {
+            sb.append("Найдено важное:\n");
+            for (String[] f : g.facts) sb.append("• ").append(f[0].isEmpty() ? "" : f[0] + ": ").append(f[1]).append('\n');
+            sb.append("\nДобавлено в «Паспорт ТВ».\n");
+        } else if (!g.lines.isEmpty()) {
+            sb.append("Текст с экрана меню:\n").append(android.text.TextUtils.join("\n", g.lines.subList(0, Math.min(40, g.lines.size()))));
+        }
+        if (g.shot != null) sb.append("\nНиже — снимок меню (если данные на другой странице — открой её комбинацией на пульте сам).");
+        t.setText(sb.toString().trim());
+        box.addView(t);
+        if (g.shot != null) {
+            ImageView iv = new ImageView(this);
+            iv.setAdjustViewBounds(true);
+            iv.setImageBitmap(g.shot);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+            lp.topMargin = Ui.dp(this, 10);
+            box.addView(iv, lp);
+        }
+        android.widget.ScrollView sv = new android.widget.ScrollView(this);
+        sv.addView(box);
+        new AlertDialog.Builder(this).setTitle("🔧 " + g.menu.label).setView(sv)
+                .setPositiveButton("OK", (d, w) -> { if (!g.facts.isEmpty()) scan(); })
+                .show();
+        hint.setText(g.facts.isEmpty() ? "Сервисное меню: важных строк не найдено — смотри снимок." : "Сервисное меню считано, данные добавлены в «Паспорт ТВ».");
     }
 
     // ------------------------------------------------------------ коды

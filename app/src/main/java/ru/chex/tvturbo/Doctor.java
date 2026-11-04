@@ -444,6 +444,8 @@ public final class Doctor {
         } else add(o, "Экран и матрица", "Матрица (панель)", !panelProps.isEmpty() ? panelProps.trim()
                 : "система не сообщает — смотри наклейку на задней стороне матрицы");
         if (!pr.isEmpty()) add(o, "Экран и матрица", "Родное разрешение матрицы", pr + (pr.startsWith("1366") ? " (HD)" : pr.startsWith("1920") ? " (Full HD)" : pr.startsWith("3840") ? " (4K)" : ""));
+        String svcPanel = ServiceMenu.savedPanel(c);
+        if (!svcPanel.isEmpty()) add(o, "Экран и матрица", "Матрица (из сервисного меню)", svcPanel);
         if (!panel.trim().isEmpty() && !panel.trim().equals(panelName)) add(o, "Экран и матрица", "Запись о панели", cut(panel.trim(), 300));
         if (!panelFiles.isEmpty()) add(o, "Экран и матрица", "Файлы панелей в прошивке", panelFiles.replace("\n", ", "));
 
@@ -473,10 +475,14 @@ public final class Doctor {
         if (!ram.isEmpty()) sum.append("\nПамять: ").append(ram).append(" ОЗУ");
         String flash = valueOf(o, "Объём флеш-памяти");
         if (!flash.isEmpty()) sum.append(", ").append(flash).append(" флеш");
-        String mat = valueOf(o, "Матрица (панель)");
+        String mat = valueOf(o, "Матрица (из сервисного меню)");
+        if (mat.isEmpty()) mat = valueOf(o, "Матрица (панель)");
         if (!mat.isEmpty() && !mat.startsWith("система")) sum.append("\nМатрица: ").append(mat);
         sum.append("\nПрошивка: Android ").append(first(p, "ro.build.version.release")).append(", ").append(first(p, "ro.build.display.id"));
         o.add(0, new String[]{"Кратко", "Этот телевизор", sum.toString()});
+
+        // считанное из сервисного меню
+        for (String[] f : ServiceMenu.savedFacts(c)) add(o, "Сервисное меню", f[0].isEmpty() ? "—" : f[0], f[1]);
 
         // всё, что пригодится для поиска прошивки на форумах
         Pattern keys = Pattern.compile("(?i)(mitv|xiaomi|mstar|mtk|mediatek|amlogic|realtek|rtk|panel|board|chip|soc|project|customer|odm|oem|model|platform|hardware|tv\\.|region|sku)");
