@@ -393,7 +393,7 @@ public final class Doctor {
         String blocks = sh(adb, "cat /sys/block/mmcblk0/size 2>/dev/null").trim();
         try { add(o, "Память", "Объём флеш-памяти", (Long.parseLong(blocks) * 512 / 1_000_000_000L) + " ГБ"); } catch (Throwable ignored) { }
 
-        add(o, "Экран и матрица", "Разрешение", grab(sh(adb, "wm size"), "(?:Physical|Override) size:\\s*(\\S+)"));
+        add(o, "Экран и матрица", "Разрешение интерфейса", grab(sh(adb, "wm size"), "(?:Physical|Override) size:\\s*(\\S+)"));
         add(o, "Экран и матрица", "Плотность", grab(sh(adb, "wm density"), "density:\\s*(\\d+)"));
         String disp = sh(adb, "dumpsys display | grep -m1 DisplayDeviceInfo");
         add(o, "Экран и матрица", "Частота", grab(disp, "fps=([\\d.]+)") + " Гц");
@@ -405,8 +405,18 @@ public final class Doctor {
                 panelProps += e.getKey() + "=" + e.getValue() + "\n";
         String panelFiles = sh(adb, "ls /tvconfig/config/panel /vendor/tvconfig/config/panel 2>/dev/null | head -12").trim();
         String panelName = cleanPanel(panel);
-        add(o, "Экран и матрица", "Матрица (панель)", !panelName.isEmpty() ? panelName
-                : !panelProps.isEmpty() ? panelProps.trim() : "система не сообщает — смотри наклейку на задней стороне матрицы");
+        // Xiaomi пишет матрицу в загрузочные параметры: производитель, диагональ, разрешение
+        String pv = first(p, "ro.boot.mi.panel_vendor", "ro.boot.panel_vendor");
+        String ps = first(p, "ro.boot.mi.panel_size", "ro.boot.panel_size");
+        String pr = first(p, "ro.boot.mi.panel_resolution", "ro.boot.panel_resolution").replace("x", "×");
+        String pretty = (pv + (ps.isEmpty() ? "" : " · " + ps + "\"") + (pr.isEmpty() ? "" : " · " + pr)).replaceAll("^ · ", "");
+        if (!panelName.isEmpty()) add(o, "Экран и матрица", "Матрица (панель)", panelName + (pretty.isEmpty() ? "" : "  (" + pretty + ")"));
+        else if (!pretty.isEmpty()) {
+            add(o, "Экран и матрица", "Матрица (панель)", pretty);
+            add(o, "Экран и матрица", "Точная модель матрицы", "система не сообщает — номер на наклейке на задней стороне матрицы (видно при разборе)");
+        } else add(o, "Экран и матрица", "Матрица (панель)", !panelProps.isEmpty() ? panelProps.trim()
+                : "система не сообщает — смотри наклейку на задней стороне матрицы");
+        if (!pr.isEmpty()) add(o, "Экран и матрица", "Родное разрешение матрицы", pr + (pr.startsWith("1366") ? " (HD)" : pr.startsWith("1920") ? " (Full HD)" : pr.startsWith("3840") ? " (4K)" : ""));
         if (!panel.trim().isEmpty() && !panel.trim().equals(panelName)) add(o, "Экран и матрица", "Запись о панели", cut(panel.trim(), 300));
         if (!panelFiles.isEmpty()) add(o, "Экран и матрица", "Файлы панелей в прошивке", panelFiles.replace("\n", ", "));
 
@@ -416,13 +426,30 @@ public final class Doctor {
         add(o, "Прошивка", "Дата сборки", first(p, "ro.build.date"));
         add(o, "Прошивка", "Патч безопасности", first(p, "ro.build.version.security_patch"));
         add(o, "Прошивка", "Отпечаток (fingerprint)", first(p, "ro.build.fingerprint"));
-        add(o, "Прошивка", "Загрузчик", first(p, "ro.bootloader", "ro.boot.bootloader"));
+        String bl = first(p, "ro.bootloader", "ro.boot.bootloader");
+        if (!bl.matches("(?i)|unknown|0+|123456789|none")) add(o, "Прошивка", "Загрузчик", bl);
         add(o, "Прошивка", "Тип сборки", first(p, "ro.build.type") + " / " + first(p, "ro.build.tags"));
 
         add(o, "Сеть", "Wi-Fi драйвер", sh(adb, "basename $(readlink /sys/class/net/wlan0/device/driver) 2>/dev/null").trim());
         add(o, "Сеть", "Wi-Fi чип (vendor:device)", (sh(adb, "cat /sys/class/net/wlan0/device/vendor 2>/dev/null").trim() + ":"
                 + sh(adb, "cat /sys/class/net/wlan0/device/device 2>/dev/null").trim()).replaceAll("^:$", ""));
         add(o, "Сеть", "Ethernet", sh(adb, "ls /sys/class/net 2>/dev/null").contains("eth0") ? "есть (eth0)" : "");
+
+        // сводка одной строкой — сверху паспорта
+        StringBuilder sum = new StringBuilder();
+        String brand = first(p, "ro.product.brand"), model = first(p, "ro.product.model"), dev = first(p, "ro.product.device");
+        sum.append(brand).append(' ').append(model).append(dev.isEmpty() ? "" : " (" + dev + ")");
+        String soc = first(p, "ro.board.platform", "ro.hardware");
+        if (!soc.isEmpty()) sum.append("\nПроцессор: ").append(soc).append(cores > 0 ? ", " + cores + " ядра" : "")
+                .append(mhz.matches("\\d+") ? " × " + (Long.parseLong(mhz) / 1000) + " МГц" : "");
+        String ram = valueOf(o, "Оперативная");
+        if (!ram.isEmpty()) sum.append("\nПамять: ").append(ram).append(" ОЗУ");
+        String flash = valueOf(o, "Объём флеш-памяти");
+        if (!flash.isEmpty()) sum.append(", ").append(flash).append(" флеш");
+        String mat = valueOf(o, "Матрица (панель)");
+        if (!mat.isEmpty() && !mat.startsWith("система")) sum.append("\nМатрица: ").append(mat);
+        sum.append("\nПрошивка: Android ").append(first(p, "ro.build.version.release")).append(", ").append(first(p, "ro.build.display.id"));
+        o.add(0, new String[]{"Кратко", "Этот телевизор", sum.toString()});
 
         // всё, что пригодится для поиска прошивки на форумах
         Pattern keys = Pattern.compile("(?i)(mitv|xiaomi|mstar|mtk|mediatek|amlogic|realtek|rtk|panel|board|chip|soc|project|customer|odm|oem|model|platform|hardware|tv\\.|region|sku)");
@@ -432,6 +459,11 @@ public final class Doctor {
             if (e.getValue().isEmpty() || e.getKey().contains("serial") || e.getKey().contains("mac") || e.getKey().contains("imei")) continue;
             if (keys.matcher(e.getKey()).find()) { add(o, "Системные коды (для прошивки)", e.getKey(), cut(e.getValue(), 120)); n++; }
         }
+    }
+
+    private static String valueOf(List<String[]> o, String key) {
+        for (String[] r : o) if (r[1].equals(key)) return r[2];
+        return "";
     }
 
     private static String cleanPanel(String raw) {
