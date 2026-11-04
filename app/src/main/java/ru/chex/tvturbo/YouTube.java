@@ -63,9 +63,7 @@ public final class YouTube {
 
         // 2. разрешение VPN без окна подтверждения
         st.on(2, "run", "");
-        adb.execSync("cmd appops set " + DPI_PKG + " ACTIVATE_VPN allow; appops set " + DPI_PKG + " ACTIVATE_VPN allow", true);
-        adb.execSync("pm grant " + DPI_PKG + " android.permission.POST_NOTIFICATIONS", false);
-        adb.execSync("dumpsys deviceidle whitelist +" + DPI_PKG, false); // не усыплять обход
+        grant(adb);
         st.on(2, "ok", "выдано");
 
         // 3. запуск с текущей стратегией
@@ -81,22 +79,56 @@ public final class YouTube {
         return ok;
     }
 
+    /** Все разрешения обходу: VPN без окна, работа в фоне, не усыплять. Повторять можно сколько угодно. */
+    public static void grant(Adb adb) {
+        adb.execSync("cmd appops set " + DPI_PKG + " ACTIVATE_VPN allow 2>/dev/null; appops set " + DPI_PKG + " ACTIVATE_VPN allow 2>/dev/null; true", false);
+        adb.execSync("cmd appops set " + DPI_PKG + " RUN_ANY_IN_BACKGROUND allow 2>/dev/null; cmd appops set " + DPI_PKG + " RUN_IN_BACKGROUND allow 2>/dev/null; true", false);
+        adb.execSync("pm grant " + DPI_PKG + " android.permission.POST_NOTIFICATIONS 2>/dev/null; true", false);
+        adb.execSync("dumpsys deviceidle whitelist +" + DPI_PKG + " >/dev/null 2>&1; true", false);
+    }
+
     /** Включить (или перезапустить) обход со стратегией №i. */
     public static boolean start(Context c, Adb adb, int i) {
         String s = STRATEGIES[Math.max(0, Math.min(i, STRATEGIES.length - 1))];
         sp(c).edit().putInt("strategy", i).apply();
-        // ToggleActivity: если обход выключен — включит, если включён и стратегия новая — перезапустит
+        grant(adb);
         adb.execSync("am start -n " + TOGGLE + " --es strategy '" + s + "' --ez only_update true", true);
         if (isRunning(adb)) {                      // новая стратегия применяется перезапуском
             adb.execSync("am start -n " + TOGGLE + " --ez only_stop true", true);
-            try { Thread.sleep(1500); } catch (InterruptedException ignored) { }
+            sleep(2000);
         }
         adb.execSync("am start -n " + TOGGLE + " --ez only_start true", true);
-        try { Thread.sleep(2500); } catch (InterruptedException ignored) { }
-        return isRunning(adb);
+        if (waitRunning(adb, 12)) return true;
+
+        // запасной путь: открыть ByeByeDPI и «нажать» кнопку подключения пультом
+        adb.logLine("Обход не поднялся сам — открываю ByeByeDPI и нажимаю «Подключить»");
+        adb.execSync("monkey -p " + DPI_PKG + " -c android.intent.category.LEANBACK_LAUNCHER 1", false);
+        sleep(4000);
+        adb.execSync("input keyevent 23", false);   // OK на пульте
+        sleep(1500);
+        String dlg = adb.execSync("dumpsys window windows | grep -i mCurrentFocus", false).out;
+        if (dlg.contains("vpndialogs") || dlg.contains("ConfirmDialog")) {   // системное окно VPN — подтвердить
+            adb.execSync("input keyevent 22; input keyevent 23", false);
+            sleep(1500);
+        }
+        boolean ok = waitRunning(adb, 8);
+        adb.execSync("input keyevent 3", false);    // «Домой», чтобы не оставлять ByeByeDPI на экране
+        return ok;
     }
 
+    private static boolean waitRunning(Adb adb, int seconds) {
+        for (int t = 0; t < seconds; t += 2) {
+            sleep(2000);
+            if (isRunning(adb)) return true;
+        }
+        return false;
+    }
+
+    private static void sleep(long ms) { try { Thread.sleep(ms); } catch (InterruptedException ignored) { } }
+
     public static boolean isRunning(Adb adb) {
+        String net = adb.execSync("ls /sys/class/net 2>/dev/null", false).out;
+        if (net.contains("tun")) return true;   // VPN-туннель поднят
         String out = adb.execSync("dumpsys activity services " + DPI_PKG, false).out;
         return out.contains("ByeDpiVpnService") || out.contains("ByeDpiProxyService");
     }

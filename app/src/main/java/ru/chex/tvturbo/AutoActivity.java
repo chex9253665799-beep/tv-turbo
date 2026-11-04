@@ -23,11 +23,12 @@ public class AutoActivity extends ListScreen {
             "Ускорить анимации (0.5×)",
             "Включить блокировку рекламы (AdGuard DNS)",
             "Отключить рекламу, телеметрию и мусор",
-            "Выключить заставку и фоновый поиск Wi-Fi/BT",
+            "Выдать все разрешения, выключить заставку и фоновый поиск",
             "Скачать красивый лаунчер без рекламы",  // имя лаунчера подставляется в onResume
             "Сделать его главным экраном",
             "Настроить YouTube: обход замедления + SmartTube",
-            "Очистить кэш и освободить память"
+            "Очистить кэш и освободить память",
+            "Включить Стража — следит за ТВ и чинит сам"
     };
 
     private boolean running;
@@ -40,10 +41,16 @@ public class AutoActivity extends ListScreen {
         // сначала — выбор лаунчера с картинками, потом сразу запуск
         Ui.action(this, actions, "⚡  Запустить", v -> {
             if (running || !Ui.needAdb(this)) return;
+            if (launcherReady()) { start(true); return; }
             startActivityForResult(new Intent(this, LauncherActivity.class)
                     .putExtra(LauncherActivity.EXTRA_CHOOSE_ONLY, true), REQ_LAUNCHER);
         });
         Ui.action(this, actions, "Без смены лаунчера", v -> start(false));
+        Ui.action(this, actions, "🎨  Сменить лаунчер", v -> {
+            if (running || !Ui.needAdb(this)) return;
+            startActivityForResult(new Intent(this, LauncherActivity.class)
+                    .putExtra(LauncherActivity.EXTRA_CHOOSE_ONLY, true), REQ_LAUNCHER_FORCE);
+        });
         for (String s : STEPS) {
             Ui.Row r = new Ui.Row();
             r.mark = "○";
@@ -54,12 +61,22 @@ public class AutoActivity extends ListScreen {
         actions.getChildAt(0).requestFocus();
     }
 
-    private static final int REQ_LAUNCHER = 7;
+    private static final int REQ_LAUNCHER = 7, REQ_LAUNCHER_FORCE = 8;
+    private boolean forceLauncher;
+
+    /** Выбранный лаунчер уже установлен и стоит главным экраном — повторно не ставим. */
+    private boolean launcherReady() {
+        Launchers.L l = Launchers.chosen(this);
+        return l.pkg.equals(Pkgs.currentHome(this));
+    }
 
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
-        if (req == REQ_LAUNCHER && res == RESULT_OK) start(true);
+        if ((req == REQ_LAUNCHER || req == REQ_LAUNCHER_FORCE) && res == RESULT_OK) {
+            forceLauncher = req == REQ_LAUNCHER_FORCE;
+            start(true);
+        }
     }
 
     @Override
@@ -121,6 +138,10 @@ public class AutoActivity extends ListScreen {
             misc.add("settings put secure screensaver_enabled 0");
             misc.add("settings put global wifi_scan_always_enabled 0");
             misc.add("settings put global ble_scan_always_enabled 0");
+            // все разрешения сразу: ТВ Турбо (Страж) и обход YouTube работают в фоне и не засыпают
+            misc.add("dumpsys deviceidle whitelist +" + getPackageName() + " >/dev/null 2>&1; true");
+            misc.add("cmd appops set " + getPackageName() + " RUN_ANY_IN_BACKGROUND allow 2>/dev/null; true");
+            if (YouTube.installed(this, YouTube.DPI_PKG)) YouTube.grant(adb);
             done += step(3, misc, null);
 
             // 5–6. лаунчер
@@ -140,6 +161,13 @@ public class AutoActivity extends ListScreen {
             clean.add("pm trim-caches 999G");
             clean.add("am kill-all");
             done += step(7, clean, null);
+
+            // 9. Страж: включить, поставить по расписанию и сразу проверить
+            mark(8, "⏳", "", 0, null);
+            Guard.setEnabled(this, true);
+            String g = Guard.check(this, false);
+            mark(8, "✔", g.length() > 40 ? g.substring(0, 40) + "…" : g, 0xFF3DDC84, null);
+            done++;
 
             int total = withLauncher ? STEPS.length : STEPS.length - 2;
             int d = done;
@@ -164,6 +192,11 @@ public class AutoActivity extends ListScreen {
     /** Скачать, установить и назначить выбранный лаунчер. Возвращает число успешных шагов (0–2). */
     private int launcher() {
         Launchers.L l = Launchers.chosen(this);
+        if (!forceLauncher && launcherReady()) {
+            mark(4, "✔", l.name + " уже стоит", 0xFF3DDC84, null);
+            mark(5, "✔", "уже главный", 0xFF3DDC84, null);
+            return 2;
+        }
         mark(4, "⏳", "ищу " + l.name, 0xFF8A93A6, null);
         String res = LauncherActivity.installAndSetHome(this, adb, l, t -> mark(4, "⏳", t.length() > 40 ? t.substring(0, 40) + "…" : t, 0xFF8A93A6, null));
         if (res.startsWith("✖")) {

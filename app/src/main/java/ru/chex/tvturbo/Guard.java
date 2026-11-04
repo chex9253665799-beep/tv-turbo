@@ -110,6 +110,7 @@ public final class Guard {
         }
 
         // 6. обход YouTube
+        if (Profile.youtube(c) && YouTube.installed(c, YouTube.DPI_PKG)) YouTube.grant(adb);
         if (Profile.youtube(c) && YouTube.installed(c, YouTube.DPI_PKG) && !YouTube.isRunning(adb)) {
             if (YouTube.start(c, adb, YouTube.strategy(c))) { fixed++; note(what, "обход YouTube включён"); }
         }
