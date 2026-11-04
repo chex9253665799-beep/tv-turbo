@@ -1,0 +1,52 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'ru.chex.tvturbo'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'ru.chex.tvturbo'
+        minSdk 23
+        //noinspection ExpiredTargetSdkVersion  ставится вручную на ТВ, не через Play Маркет
+        targetSdk 28
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // постоянный ключ подписи: чтобы новые версии ставились поверх старых
+    signingConfigs {
+        shared {
+            storeFile file('tvturbo.keystore')
+            storePassword 'tvturbo'
+            keyAlias 'tvturbo'
+            keyPassword 'tvturbo'
+        }
+    }
+    buildTypes {
+        debug { signingConfig signingConfigs.shared }
+        release { signingConfig signingConfigs.shared; minifyEnabled false }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+
+    packaging {
+        resources {
+            excludes += ['META-INF/*.kotlin_module', 'META-INF/versions/**']
+        }
+    }
+}
+
+dependencies {
+    // ADB-клиент: приложение подключается к сетевой отладке самого ТВ (127.0.0.1:5555)
+    implementation 'dev.mobile:dadb:1.2.10'
+}

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#0B0E14</color>
+    <color name="bg2">#141A2A</color>
+    <color name="stroke">#2A3245</color>
+    <color name="card">#161C28</color>
+    <color name="card_focus">#2E6BFF</color>
+    <color name="text">#ECEFF4</color>
+    <color name="muted">#8A93A6</color>
+    <color name="ok">#3DDC84</color>
+    <color name="warn">#FFB020</color>
+    <color name="bad">#FF5A5F</color>
+
+    <style name="AppTheme" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@drawable/bg_gradient</item>
+        <item name="android:colorAccent">@color/card_focus</item>
+        <item name="android:textColorPrimary">@color/text</item>
+        <item name="android:textColor">@color/text</item>
+    </style>
+
+    <style name="BigButton">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">10dp</item>
+        <item name="android:background">@drawable/btn_bg</item>
+        <item name="android:focusable">true</item>
+        <item name="android:gravity">start|center_vertical</item>
+        <item name="android:paddingStart">22dp</item>
+        <item name="android:paddingEnd">22dp</item>
+        <item name="android:paddingTop">14dp</item>
+        <item name="android:paddingBottom">14dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <style name="Title">
+        <item name="android:textSize">28sp</item>
+        <item name="android:textColor">@color/text</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="Muted">
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/muted</item>
+    </style>
+</resources>
