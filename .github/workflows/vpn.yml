@@ -1,0 +1,92 @@
+name: Сборка VPN для YouTube
+
+# «ТВ Турбо VPN» — v2rayNG, в котором через твой сервер идёт ТОЛЬКО YouTube.
+# Ссылки на сервер здесь нет: её вводят с телефона, и она хранится только на телевизоре.
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'vpn/**', '.github/workflows/vpn.yml' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  V2RAYNG_TAG: '2.3.15'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Исходники v2rayNG
+        uses: actions/checkout@v4
+        with:
+          repository: 2dust/v2rayNG
+          ref: ${{ env.V2RAYNG_TAG }}
+          path: v2
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Android SDK 37 и NDK
+        run: |
+          SDKM=$(ls $ANDROID_SDK_ROOT/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)
+          yes | $SDKM --licenses >/dev/null || true
+          $SDKM --install "platforms;android-37.0" "build-tools;37.0.0" "ndk;30.0.16248370" >/dev/null
+          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/30.0.16248370" >> $GITHUB_ENV
+          sed -i '10i\
+          \
+              ndkVersion = "30.0.16248370"' v2/V2rayNG/app/build.gradle.kts
+
+      - name: libhevtun
+        working-directory: v2
+        run: |
+          bash compile-hevtun.sh
+          cp -r libs V2rayNG/app
+
+      - name: libv2ray (ядро Xray)
+        working-directory: v2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=$(cd AndroidLibXrayLite && git describe --tags --abbrev=0)
+          echo "AndroidLibXrayLite $TAG"
+          mkdir -p V2rayNG/app/libs
+          gh release download "$TAG" -R 2dust/AndroidLibXrayLite -p libv2ray.aar -D V2rayNG/app/libs
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Патч — только YouTube, управление из ТВ Турбо
+        run: python3 vpn/patch.py v2
+
+      - name: Собрать
+        working-directory: v2/V2rayNG
+        run: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          chmod +x gradlew
+          ./gradlew assemblePlaystoreRelease --no-daemon "-PABI_FILTERS=armeabi-v7a;arm64-v8a"
+
+      - name: Подписать ключом ТВ Турбо
+        run: |
+          BT=$ANDROID_SDK_ROOT/build-tools/37.0.0
+          find v2/V2rayNG/app/build/outputs/apk -name '*.apk'
+          for abi in arm64-v8a armeabi-v7a; do
+            APK=$(find v2/V2rayNG/app/build/outputs/apk -name "*$abi*.apk" | head -1)
+            OUT=TvTurboVPN-$([ $abi = arm64-v8a ] && echo arm64 || echo arm).apk
+            $BT/zipalign -f -p 4 "$APK" aligned.apk
+            $BT/apksigner sign --ks app/tvturbo.keystore --ks-pass pass:tvturbo --ks-key-alias tvturbo --key-pass pass:tvturbo --out $OUT aligned.apk
+            $BT/apksigner verify $OUT
+            ls -la $OUT
+          done
+
+      - name: Выложить в релиз «latest»
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          files: |
+            TvTurboVPN-arm64.apk
+            TvTurboVPN-arm.apk
