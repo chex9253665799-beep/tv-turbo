@@ -4,7 +4,7 @@ name: Сборка VPN для YouTube
 # Ссылки на сервер здесь нет: её вводят с телефона, и она хранится только на телевизоре.
 on:
   push:
-    branches: [ main ]
+    branches: [ vpn ]
     paths: [ 'vpn/**', '.github/workflows/vpn.yml' ]
   workflow_dispatch:
 
@@ -83,10 +83,13 @@ jobs:
             ls -la $OUT
           done
 
-      - name: Выложить в релиз «latest»
+      - name: Выложить в тестовый релиз «vpn» (автообновление его не видит)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
+          tag_name: vpn
+          name: ТВ Турбо + свой VPN для YouTube (тест)
+          prerelease: true
+          make_latest: false
           files: |
             TvTurboVPN-arm64.apk
             TvTurboVPN-arm.apk

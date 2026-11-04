@@ -123,14 +123,11 @@ public final class Guard {
             }
         }
 
-        // 6. обход YouTube
-        // переход со старого ByeByeDPI (VPN на весь ТВ) на «ТВ Турбо Обход» (только YouTube) — сам
-        if (Profile.youtube(c) && !YouTube.installed(c, YouTube.DPI_PKG)) {
-            if (YouTube.setup(c, adb, (st, state, text) -> { })) { fixed++; note(what, "обход теперь только для YouTube"); }
-        }
-        if (Profile.youtube(c) && YouTube.installed(c, YouTube.DPI_PKG)) YouTube.grant(adb);
-        if (Profile.youtube(c) && YouTube.installed(c, YouTube.DPI_PKG) && !YouTube.isRunning(adb)) {
-            if (YouTube.start(c, adb, YouTube.strategy(c))) { fixed++; note(what, "обход YouTube включён"); }
+        // 6. YouTube: обход без сервера или свой VPN — что работает
+        if (Profile.youtube(c)) {
+            int[] f = {0};
+            String r = youtube(c, adb, f);
+            if (f[0] > 0) { fixed += f[0]; note(what, r); }
         }
 
         // 7. память: если свободно меньше 20% — закрыть фоновые и почистить кэш
@@ -151,6 +148,48 @@ public final class Guard {
     }
 
     /**
+     * Следит, чтобы YouTube открывался. Сначала — то, что выбрано (свой VPN, если ключ задан, иначе обход).
+     * Если YouTube через него не открывается, а интернет есть — пробует другое: обход ⇄ свой VPN,
+     * а без своего сервера — следующую стратегию обхода. Остаётся на том, что заработало.
+     */
+    private static String youtube(Context c, Adb adb, int[] fixed) {
+        // переход со старого ByeByeDPI (VPN на весь ТВ) на «ТВ Турбо Обход» (только YouTube)
+        if (!YouTube.installed(c, YouTube.DPI_PKG)) {
+            if (YouTube.setup(c, adb, (st, state, text) -> { })) { fixed[0]++; return "обход теперь только для YouTube"; }
+        }
+        boolean vpnOk = YouTube.hasVpn(c) && YouTube.installed(c, YouTube.VPN_PKG);
+        String act = vpnOk ? YouTube.active(c) : "dpi";
+        String msg = "";
+        if ("vpn".equals(act)) {
+            if (!YouTube.isVpnRunning(adb)) { if (YouTube.startVpn(c, adb)) { fixed[0]++; msg = "свой VPN для YouTube включён"; } }
+        } else {
+            YouTube.grant(adb);
+            if (!YouTube.isRunning(adb)) { if (YouTube.startDpi(c, adb)) { fixed[0]++; msg = "обход YouTube включён"; } }
+        }
+        // проверка: открывается ли YouTube на самом деле
+        if (YouTube.youtubeWorks(act) || !YouTube.internet()) { sp(c).edit().putInt("ytFails", 0).apply(); return msg; }
+        adb.logLine("🛡 Страж: YouTube не открывается через " + ("vpn".equals(act) ? "свой VPN" : "обход") + " — пробую другое");
+        if ("vpn".equals(act)) {
+            if (YouTube.startDpi(c, adb) && YouTube.youtubeWorks("dpi")) { fixed[0]++; return "свой VPN не отвечал — включён обход"; }
+            YouTube.startVpn(c, adb);
+            return msg;
+        }
+        if (vpnOk) {
+            if (YouTube.startVpn(c, adb) && YouTube.youtubeWorks("vpn")) { fixed[0]++; return "обход не пробивал — включён свой VPN"; }
+            YouTube.startDpi(c, adb);
+            return msg;
+        }
+        // своего сервера нет — следующая стратегия обхода, но только после двух неудачных проверок подряд
+        android.content.SharedPreferences g = sp(c);
+        int fails = g.getInt("ytFails", 0) + 1;
+        if (fails < 2) { g.edit().putInt("ytFails", fails).apply(); return msg; }
+        g.edit().putInt("ytFails", 0).apply();
+        int next = (YouTube.strategy(c) + 1) % YouTube.STRATEGIES.length;
+        if (YouTube.start(c, adb, next)) { fixed[0]++; return "обход: стратегия " + (next + 1); }
+        return msg;
+    }
+
+    /**
      * Первый запуск стража: если профиль пуст, а на ТВ уже что-то настроено (старые версии
      * приложения не вели профиль) — берём текущее состояние за образец.
      */
@@ -166,7 +205,7 @@ public final class Guard {
         }
         if (Profile.dns(c) == null && "hostname".equals(adb.execSync("settings get global private_dns_mode", false).out.trim())) e.putString("dns", "on");
         String aon = adb.execSync("settings get secure always_on_vpn_app", false).out;
-        if (aon.contains(YouTube.DPI_PKG) || aon.contains(YouTube.OLD_DPI_PKG)) e.putBoolean("youtube", true);
+        if (aon.contains(YouTube.DPI_PKG) || aon.contains(YouTube.OLD_DPI_PKG) || aon.contains(YouTube.VPN_PKG)) e.putBoolean("youtube", true);
         e.apply();
         sp(c).edit().putBoolean("seeded", true).apply();
     }

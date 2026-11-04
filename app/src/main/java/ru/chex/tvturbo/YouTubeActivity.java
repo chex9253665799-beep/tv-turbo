@@ -1,6 +1,14 @@
 package ru.chex.tvturbo;
 
+import android.app.AlertDialog;
+import android.content.Intent;
+import android.view.Gravity;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import ru.chex.tvturbo.mv.PhoneInput;
 
 /** Экран «YouTube в России»: настройка под ключ, смена стратегии, выключение. */
 public class YouTubeActivity extends ListScreen {
@@ -14,7 +22,11 @@ public class YouTubeActivity extends ListScreen {
     };
 
     private boolean busy;
-    private Button nextBtn;
+    private Button nextBtn, switchBtn;
+    private final PhoneInput phone = new PhoneInput();
+    private AlertDialog keyDlg;
+    private String pendingLink;
+    private static final int REQ_VPN = 77;
 
     @Override
     protected void setup() {
@@ -23,6 +35,9 @@ public class YouTubeActivity extends ListScreen {
                 + "идут напрямую и VPN не видят. Обход включается сам, в том числе после перезагрузки ТВ.");
         Ui.action(this, actions, "▶  Настроить всё", v -> runSetup());
         nextBtn = Ui.action(this, actions, "", v -> nextStrategy());
+        Ui.action(this, actions, "🔑  Свой VPN-сервер (QR)", v -> keyDialog());
+        switchBtn = Ui.action(this, actions, "", v -> switchMode());
+        Ui.action(this, actions, "🧪  Проверить YouTube", v -> test());
         Ui.action(this, actions, "📺  Открыть YouTube", v -> adb.run(
                 "monkey -p " + YouTube.YOUTUBE_PKG + " -c android.intent.category.LEANBACK_LAUNCHER 1", null));
         Ui.action(this, actions, "⏹  Выключить обход", v -> Ui.confirm(this, "Выключить обход?",
@@ -43,6 +58,9 @@ public class YouTubeActivity extends ListScreen {
     }
 
     private void updateNext() {
+        boolean v = YouTube.hasVpn(this);
+        switchBtn.setText(!v ? "🔀  Свой VPN: не задан" : "vpn".equals(YouTube.active(this))
+                ? "🔀  Сейчас: свой VPN → включить обход" : "🔀  Сейчас: обход → включить свой VPN");
         nextBtn.setText("🔁  Тормозит? Другая стратегия (" + (YouTube.strategy(this) + 1) + "/" + YouTube.STRATEGIES.length + ")");
     }
 
@@ -93,5 +111,128 @@ public class YouTubeActivity extends ListScreen {
                         : "⚠ Обход не запустился — нажми «Настроить всё».");
             });
         });
+    }
+
+    // ================================================= свой VPN-сервер
+
+    private void keyDialog() {
+        if (busy || !Ui.needAdb(this)) return;
+        String url = phone.start(this, "ТВ Турбо — свой VPN для YouTube",
+                "Вставь ключ своего сервера (vless://, vmess://, trojan://, ss://, hy2:// или ссылку подписки) "
+                        + "или считай его QR-код с фото/скриншота. Через сервер пойдёт ТОЛЬКО YouTube.", true, link -> {
+                    if (!YouTube.looksLikeKey(link)) { Ui.toast(this, "Это не похоже на ключ VPN — проверь и отправь ещё раз"); return; }
+                    if (keyDlg != null) keyDlg.dismiss();
+                    applyKey(link);
+                });
+        if (url == null) { Ui.toast(this, "ТВ не в домашней сети — подключи Wi-Fi или кабель"); return; }
+        int px = Ui.dp(this, 220);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER_HORIZONTAL);
+        box.setPadding(Ui.dp(this, 20), Ui.dp(this, 12), Ui.dp(this, 20), Ui.dp(this, 8));
+        ImageView qr = new ImageView(this);
+        try { qr.setImageBitmap(Qr.bitmap(url, px)); } catch (Throwable ignored) { }
+        box.addView(qr, new LinearLayout.LayoutParams(px, px));
+        TextView t = new TextView(this);
+        t.setTextSize(16);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(0, Ui.dp(this, 12), 0, 0);
+        t.setText("1. Наведи камеру телефона на QR-код (телефон — в той же Wi-Fi)\n   или открой в браузере: " + url
+                + "\n2. Вставь ключ сервера или нажми «Сфотографировать QR-код ключа»\n3. «Отправить на ТВ» — дальше всё сам."
+                + "\n\nСейчас: " + YouTube.vpnLabel(this));
+        box.addView(t);
+        keyDlg = new AlertDialog.Builder(this).setTitle("🔑 Свой VPN-сервер для YouTube").setView(box)
+                .setNegativeButton("Закрыть", null)
+                .setOnDismissListener(d -> phone.stop())
+                .create();
+        keyDlg.show();
+    }
+
+    /** Поставить клиент, выдать разрешения и передать ему ключ (ключ — только внутри ТВ, без командной строки). */
+    private void applyKey(String link) {
+        busy = true;
+        hint.setText("Ставлю «ТВ Турбо VPN»… (пара минут при первой установке)");
+        adb.background(() -> {
+            String err = YouTube.installVpn(this, adb, t -> adb.ui(() -> hint.setText("ТВ Турбо VPN: " + t)));
+            if (err != null) { adb.ui(() -> { busy = false; hint.setText("✖ ТВ Турбо VPN " + err); }); return; }
+            YouTube.vpnGrant(adb);
+            adb.ui(() -> {
+                hint.setText("Передаю ключ…");
+                pendingLink = link;
+                try { startActivityForResult(YouTube.vpnConfigIntent(this, link), REQ_VPN); }
+                catch (Throwable t) { busy = false; hint.setText("✖ Не удалось передать ключ: " + t.getMessage()); }
+            });
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req != REQ_VPN) return;
+        String link = pendingLink;
+        pendingLink = null;
+        if (res != RESULT_OK || link == null) {
+            busy = false;
+            String e = data != null ? data.getStringExtra("error") : null;
+            hint.setText("✖ Ключ не подошёл" + (e != null ? ": " + e : "") + ". Проверь ссылку и отправь ещё раз.");
+            return;
+        }
+        int n = data != null ? data.getIntExtra("count", 0) : 0;
+        YouTube.saveVpnLink(this, link);
+        YouTube.setActive(this, "vpn");
+        hint.setText("Ключ принят (серверов: " + n + "). Включаю свой VPN для YouTube…");
+        adb.background(() -> {
+            boolean ok = YouTube.startVpn(this, adb);
+            boolean works = ok && YouTube.youtubeWorks("vpn");
+            adb.ui(() -> {
+                busy = false;
+                updateNext();
+                hint.setText(!ok ? "⚠ Свой VPN не запустился — нажми «Проверить YouTube» или отправь ключ ещё раз."
+                        : works ? "✔ Готово! YouTube идёт через твой сервер, всё остальное — напрямую. Страж сам переключит на обход, если сервер перестанет отвечать."
+                        : "⚠ VPN включён, но YouTube через сервер не открылся. Проверь, что сервер работает, или включи обход кнопкой «Сейчас: …».");
+            });
+        });
+    }
+
+    private void switchMode() {
+        if (busy || !Ui.needAdb(this)) return;
+        if (!YouTube.hasVpn(this)) { keyDialog(); return; }
+        boolean toVpn = !"vpn".equals(YouTube.active(this));
+        busy = true;
+        hint.setText(toVpn ? "Включаю свой VPN…" : "Включаю обход…");
+        adb.background(() -> {
+            boolean ok = toVpn ? YouTube.startVpn(this, adb) : YouTube.startDpi(this, adb);
+            boolean works = ok && YouTube.youtubeWorks(toVpn ? "vpn" : "dpi");
+            adb.ui(() -> {
+                busy = false;
+                updateNext();
+                hint.setText((ok ? "✔ " : "⚠ ") + (toVpn ? "Свой VPN" : "Обход") + (ok ? " включён" : " не запустился")
+                        + (ok ? (works ? ", YouTube открывается." : ", но YouTube пока не открывается.") : "."));
+            });
+        });
+    }
+
+    private void test() {
+        if (busy || !Ui.needAdb(this)) return;
+        busy = true;
+        hint.setText("Проверяю, открывается ли YouTube…");
+        adb.background(() -> {
+            String act = YouTube.active(this);
+            boolean vpnUp = YouTube.isVpnRunning(adb), dpiUp = YouTube.isRunning(adb);
+            boolean net = YouTube.internet();
+            boolean works = (vpnUp || dpiUp) && YouTube.youtubeWorks(vpnUp ? "vpn" : "dpi");
+            adb.ui(() -> {
+                busy = false;
+                String now = vpnUp ? "свой VPN (" + YouTube.vpnLabel(this) + ")" : dpiUp ? "обход, стратегия " + (YouTube.strategy(this) + 1) : "ничего не включено";
+                hint.setText("Интернет: " + (net ? "✔" : "✖ нет") + "   ·   Сейчас: " + now + "   ·   YouTube: "
+                        + (works ? "✔ открывается" : "✖ не открывается — попробуй «Сейчас: …» или «Другая стратегия»"));
+            });
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        phone.stop();
+        super.onDestroy();
     }
 }

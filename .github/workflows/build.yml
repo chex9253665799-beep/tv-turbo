@@ -2,7 +2,7 @@ name: Сборка APK
 
 on:
   push:
-    branches: [ main, mivision ]
+    branches: [ main, mivision, vpn ]
   workflow_dispatch:
 
 permissions:
@@ -60,6 +60,16 @@ jobs:
         with:
           tag_name: mivision
           name: MiVision TV (тест)
+          prerelease: true
+          make_latest: false
+          files: TvTurbo.apk
+
+      - name: Тестовая сборка (ветка vpn) — отдельный релиз, автообновление его не видит
+        if: github.ref == 'refs/heads/vpn'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: vpn
+          name: ТВ Турбо + свой VPN для YouTube (тест)
           prerelease: true
           make_latest: false
           files: TvTurbo.apk

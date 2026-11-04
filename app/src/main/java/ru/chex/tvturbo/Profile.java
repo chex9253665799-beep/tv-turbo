@@ -44,7 +44,8 @@ public final class Profile {
         if (cmd.contains("private_dns_mode off")) e.putString("dns", "off");
         if (cmd.contains("screensaver_enabled 0")) e.putBoolean("saverOff", true);
         if (cmd.contains("screensaver_enabled 1")) e.putBoolean("saverOff", false);
-        if (cmd.contains("always_on_vpn_app " + YouTube.DPI_PKG) || cmd.contains("always_on_vpn_app " + YouTube.OLD_DPI_PKG)) e.putBoolean("youtube", true);
+        if (cmd.contains("always_on_vpn_app " + YouTube.DPI_PKG) || cmd.contains("always_on_vpn_app " + YouTube.OLD_DPI_PKG)
+                || cmd.contains("always_on_vpn_app " + YouTube.VPN_PKG)) e.putBoolean("youtube", true);
         if (cmd.contains("always_on_vpn_app ''")) e.putBoolean("youtube", false);
         if ((m = HOME.matcher(cmd)).find()) e.putString("home", m.group(1));
 
