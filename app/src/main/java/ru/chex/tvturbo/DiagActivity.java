@@ -7,7 +7,7 @@ public class DiagActivity extends ListScreen {
 
     @Override
     protected void setup() {
-        title.setText("🩺 Диагностика");
+        title.setText("🔍 Диагностика");
         Ui.action(this, actions, "🔄  Проверить заново", v -> scan());
         Ui.action(this, actions, "✅  Исправить всё безопасное", v -> fixAll());
         scan();
@@ -31,7 +31,7 @@ public class DiagActivity extends ListScreen {
         adapter.rows.clear();
         for (Diag.Rec rec : rep.recs) {
             Ui.Row row = new Ui.Row();
-            row.mark = rec.level == Diag.BAD ? "🔴" : rec.level == Diag.WARN ? "🟡" : "🟢";
+            row.mark = rec.level == Diag.BAD ? "🔴" : rec.level == Diag.WARN ? "🔶" : "✅";
             row.name = rec.title;
             row.sub = rec.detail == null ? "" : rec.detail;
             row.badge = rec.action == null ? "" : rec.action + "  ›";

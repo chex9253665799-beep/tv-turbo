@@ -109,7 +109,7 @@
             style="@style/BigButton"
             android:layout_width="wrap_content"
             android:layout_marginBottom="0dp"
-            android:text="🩺  Проверить, что тормозит" />
+            android:text="🔍  Проверить, что тормозит" />
     </LinearLayout>
 
     <!-- плитки -->

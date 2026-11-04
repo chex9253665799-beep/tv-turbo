@@ -247,8 +247,8 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
         ram.setText("Свободно " + free + " МБ из " + total + " МБ");
         ramBar.setProgress(100 - freePct);
         ramHint.setText(freePct < 20 ? "🔴 Очень мало памяти — ТВ будет тормозить. Запусти «Авто-режим»."
-                : freePct < 35 ? "🟡 Памяти маловато. Стоит почистить."
-                : "🟢 Памяти достаточно.");
+                : freePct < 35 ? "🔶 Памяти маловато. Стоит почистить."
+                : "✅ Памяти достаточно.");
     }
 
     @Override public void onLog(String line) { updateRam(); }
