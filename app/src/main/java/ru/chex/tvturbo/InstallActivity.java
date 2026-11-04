@@ -34,7 +34,9 @@ public class InstallActivity extends ListScreen {
     protected void setup() {
         title.setText("⬇ Установка приложений");
         hint.setText("Загружаю каталог…");
+        Ui.action(this, actions, "▶  YouTube в России", v -> youtube());
         Ui.action(this, actions, "⬇  Установить отмеченные", v -> installChecked());
+        Ui.action(this, actions, "🎨  Лаунчеры", v -> startActivity(new android.content.Intent(this, LauncherActivity.class)));
         Ui.action(this, actions, "🔗  APK по ссылке", v -> askUrl());
         Ui.action(this, actions, "💾  APK с флешки", v -> fromUsb());
         Ui.action(this, actions, "🏠  Главный экран", v -> chooseHome());
@@ -109,26 +111,47 @@ public class InstallActivity extends ListScreen {
     @Override
     protected void onRowClick(Ui.Row r, int pos) { if (r.checkable) toggle(r); }
 
+    /** В один клик: ByeByeDPI (обход замедления) + SmartTube, затем открыть ByeByeDPI. */
+    private void youtube() {
+        if (!Ui.needAdb(this)) return;
+        List<App> q = new ArrayList<>();
+        App dpi = null;
+        for (Ui.Row r : adapter.rows) {
+            if (!(r.tag instanceof App)) continue;
+            App a = (App) r.tag;
+            if (a.github.equals("romanvht/ByeByeDPI")) { q.add(0, a); dpi = a; }
+            else if (a.github.equals("yuliskov/SmartTube")) q.add(a);
+        }
+        if (q.isEmpty()) { Ui.toast(this, "В каталоге нет ByeByeDPI/SmartTube"); return; }
+        String dpiPkg = dpi != null ? dpi.pkg : "io.github.romanvht.byedpi";
+        Ui.confirm(this, "YouTube в России", "Установлю:\n• ByeByeDPI — обход замедления YouTube (работает на самом ТВ)\n• SmartTube — YouTube без рекламы\n\n"
+                + "После установки откроется ByeByeDPI: нажми «Подключить» и подтверди запрос VPN (это локальный обход, трафик никуда не уходит). "
+                + "Потом открывай SmartTube.", () -> installQueue(q, 0, () ->
+                adb.run("monkey -p " + dpiPkg + " -c android.intent.category.LEANBACK_LAUNCHER 1 || monkey -p " + dpiPkg + " 1",
+                        (ok, out) -> Ui.info(this, "Почти готово", "В ByeByeDPI нажми «Подключить» и подтверди VPN.\nЗатем открой SmartTube — YouTube должен работать быстро.\n\n"
+                                + "Если видео всё равно тормозит — в ByeByeDPI открой настройки и попробуй другую стратегию (режим «desync»)."))));
+    }
+
     private void installChecked() {
         List<App> sel = new ArrayList<>();
         for (Ui.Row r : adapter.rows) if (r.checkable && r.checked) sel.add((App) r.tag);
         if (sel.isEmpty()) { Ui.toast(this, "Ничего не отмечено"); return; }
-        installQueue(sel, 0);
+        installQueue(sel, 0, null);
     }
 
-    private void installQueue(List<App> q, int i) {
-        if (i >= q.size()) { Ui.toast(this, "Готово"); loadCatalog(); return; }
+    private void installQueue(List<App> q, int i, Runnable done) {
+        if (i >= q.size()) { Ui.toast(this, "Готово"); loadCatalog(); if (done != null) done.run(); return; }
         App a = q.get(i);
-        if (a.github.isEmpty()) { downloadAndInstall(a.name, a.url, () -> installQueue(q, i + 1)); return; }
+        if (a.github.isEmpty()) { downloadAndInstall(a.name, a.url, () -> installQueue(q, i + 1, done)); return; }
         hint.setText("Ищу последнюю версию " + a.name + " на GitHub…");
         new Thread(() -> {
             String url;
             try { url = latestGithubApk(a.github, a.asset, a.tag); }
             catch (Throwable t) {
-                runOnUiThread(() -> { hint.setText("✖ " + a.name + ": " + t.getMessage()); installQueue(q, i + 1); });
+                runOnUiThread(() -> { hint.setText("✖ " + a.name + ": " + t.getMessage()); installQueue(q, i + 1, done); });
                 return;
             }
-            runOnUiThread(() -> downloadAndInstall(a.name, url, () -> installQueue(q, i + 1)));
+            runOnUiThread(() -> downloadAndInstall(a.name, url, () -> installQueue(q, i + 1, done)));
         }).start();
     }
 

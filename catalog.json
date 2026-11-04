@@ -1,36 +1,28 @@
 {
-  "version": 2,
+  "version": 3,
   "apps": [
     {
-      "group": "Магазины",
-      "name": "RuStore для ТВ",
-      "pkg": "",
-      "desc": "Российский магазин приложений: Кинопоиск, Okko, Wink, IVI, VK Видео и др.",
-      "url": "https://static.rustore.ru/release/RuStoreTV.apk"
+      "group": "YouTube в России",
+      "name": "ByeByeDPI",
+      "pkg": "io.github.romanvht.byedpi",
+      "desc": "Обход замедления YouTube прямо на ТВ, без чужих серверов. Открой → «Подключить» → подтверди VPN. Открытый код.",
+      "github": "romanvht/ByeByeDPI"
     },
     {
-      "group": "Лаунчеры (главный экран без рекламы)",
-      "name": "LTvLauncher",
-      "pkg": "",
-      "desc": "Минималистичный лаунчер на основе FLauncher, без рекламы. Открытый код.",
-      "github": "leanbitlab-org/LtvLauncher",
-      "asset": "universal"
-    },
-    {
-      "group": "Лаунчеры (главный экран без рекламы)",
-      "name": "Lightweight ATV Launcher",
-      "pkg": "",
-      "desc": "Сверхлёгкий лаунчер под слабые ТВ — минимум памяти и процессора. Открытый код.",
-      "github": "wiiguy/lightweight_androidtv_launcher"
-    },
-    {
-      "group": "Полезное",
+      "group": "YouTube в России",
       "name": "SmartTube",
       "pkg": "com.teamsmart.videomanager.tv",
       "desc": "YouTube для ТВ без рекламы, со SponsorBlock и выбором качества. Открытый код.",
       "github": "yuliskov/SmartTube",
       "tag": "latest",
       "asset": "stable"
+    },
+    {
+      "group": "Магазины",
+      "name": "RuStore для ТВ",
+      "pkg": "",
+      "desc": "Российский магазин приложений: Кинопоиск, Okko, Wink, IVI, VK Видео и др.",
+      "url": "https://static.rustore.ru/release/RuStoreTV.apk"
     },
     {
       "group": "Полезное",

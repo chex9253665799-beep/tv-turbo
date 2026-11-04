@@ -28,5 +28,6 @@
         <activity android:name=".AutoActivity" android:exported="false" />
         <activity android:name=".DiagActivity" android:exported="false" />
         <activity android:name=".InstallActivity" android:exported="false" />
+        <activity android:name=".LauncherActivity" android:exported="false" />
     </application>
 </manifest>

@@ -19,17 +19,12 @@ import java.util.Set;
  */
 public class AutoActivity extends ListScreen {
 
-    /** Лаунчер, который ставит авто-режим (открытый код, без рекламы). */
-    static final String LAUNCHER_REPO = "leanbitlab-org/LtvLauncher";
-    static final String LAUNCHER_ASSET = "universal";
-    static final String LAUNCHER_NAME = "LTvLauncher";
-
     private static final String[] STEPS = {
             "Ускорить анимации (0.5×)",
             "Включить блокировку рекламы (AdGuard DNS)",
             "Отключить рекламу, телеметрию и мусор",
             "Выключить заставку и фоновый поиск Wi-Fi/BT",
-            "Скачать красивый лаунчер без рекламы",
+            "Скачать красивый лаунчер без рекламы",  // имя лаунчера подставляется в onResume
             "Сделать его главным экраном",
             "Очистить кэш и освободить память"
     };
@@ -43,6 +38,8 @@ public class AutoActivity extends ListScreen {
                 + "Трогаю только безопасное. Всё можно вернуть кнопкой «Вернуть всё».");
         Ui.action(this, actions, "⚡  Запустить", v -> start(true));
         Ui.action(this, actions, "Без смены лаунчера", v -> start(false));
+        Ui.action(this, actions, "🎨  Выбрать лаунчер", v -> startActivity(
+                new Intent(this, LauncherActivity.class).putExtra(LauncherActivity.EXTRA_CHOOSE_ONLY, true)));
         for (String s : STEPS) {
             Ui.Row r = new Ui.Row();
             r.mark = "○";
@@ -55,6 +52,15 @@ public class AutoActivity extends ListScreen {
 
     @Override
     protected void onRowClick(Ui.Row r, int pos) { }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!running && adapter.rows.size() > 4) {
+            adapter.rows.get(4).name = "Поставить лаунчер без рекламы: " + Launchers.chosen(this).name;
+            adapter.notifyDataSetChanged();
+        }
+    }
 
     private void mark(int i, String mark, String badge, int color, String sub) {
         adb.ui(() -> {
@@ -136,49 +142,19 @@ public class AutoActivity extends ListScreen {
         return good ? 1 : 0;
     }
 
-    /** Скачать, установить и назначить лаунчер. Возвращает число успешных шагов (0–2). */
+    /** Скачать, установить и назначить выбранный лаунчер. Возвращает число успешных шагов (0–2). */
     private int launcher() {
-        mark(4, "⏳", "ищу последнюю версию", 0xFF8A93A6, null);
-        Set<String> before = homePackages();
-        File f = new File(getCacheDir(), "launcher.apk");
-        try {
-            String url = InstallActivity.latestGithubApk(LAUNCHER_REPO, LAUNCHER_ASSET, "");
-            byte[] data = InstallActivity.download(url, p -> mark(4, "⏳", "скачиваю " + p + "%", 0xFF8A93A6, null));
-            try (OutputStream o = new FileOutputStream(f)) { o.write(data); }
-        } catch (Throwable t) {
-            mark(4, "✖", "не скачалось", 0xFFFF5A5F, String.valueOf(t.getMessage()));
+        Launchers.L l = Launchers.chosen(this);
+        mark(4, "⏳", "ищу " + l.name, 0xFF8A93A6, null);
+        String res = LauncherActivity.installAndSetHome(this, adb, l, t -> mark(4, "⏳", t.length() > 40 ? t.substring(0, 40) + "…" : t, 0xFF8A93A6, null));
+        if (res.startsWith("✖")) {
+            mark(4, "✖", "не получилось", 0xFFFF5A5F, res);
             mark(5, "–", "пропущено", 0xFF8A93A6, null);
             return 0;
         }
-        mark(4, "⏳", "устанавливаю", 0xFF8A93A6, null);
-        android.content.pm.PackageInfo pi = getPackageManager().getPackageArchiveInfo(f.getPath(), 0);
-        String newPkg = pi != null ? pi.packageName : null;
-        Adb.Result r = adb.installSync(f);
-        f.delete();
-        if (!r.ok) {
-            mark(4, "✖", "ошибка установки", 0xFFFF5A5F, r.out);
-            mark(5, "–", "пропущено", 0xFF8A93A6, null);
-            return 0;
-        }
-        mark(4, "✔", LAUNCHER_NAME + " установлен", 0xFF3DDC84, null);
-
-        // найти новый главный экран и назначить его
-        mark(5, "⏳", "", 0, null);
-        String comp = null;
-        Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
-        for (ResolveInfo ri : getPackageManager().queryIntentActivities(home, 0)) {
-            if (ri.activityInfo == null) continue;
-            String pkg = ri.activityInfo.packageName;
-            boolean match = newPkg != null ? pkg.equals(newPkg) : (!before.contains(pkg) && !"android".equals(pkg));
-            if (match) { comp = pkg + "/" + ri.activityInfo.name; break; }
-        }
-        if (comp == null) {
-            mark(5, "⚠", "выбери вручную", 0xFFFFB020, "Нажми «Домой» и выбери " + LAUNCHER_NAME + " → «Всегда»");
-            return 1;
-        }
-        Adb.Result h = adb.execSync("cmd package set-home-activity " + comp, true);
-        if (h.ok) { mark(5, "✔", "готово", 0xFF3DDC84, null); return 2; }
-        mark(5, "⚠", "выбери вручную", 0xFFFFB020, "Нажми «Домой» и выбери " + LAUNCHER_NAME + " → «Всегда»");
+        mark(4, "✔", l.name + " установлен", 0xFF3DDC84, null);
+        if (res.contains("стал главным")) { mark(5, "✔", "готово", 0xFF3DDC84, null); return 2; }
+        mark(5, "⚠", "выбери вручную", 0xFFFFB020, "Нажми «Домой» и выбери " + l.name + " → «Всегда»");
         return 1;
     }
 

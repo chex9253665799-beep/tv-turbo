@@ -44,7 +44,7 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
         View auto = tile(g1, "⚡", "Авто-режим", "Всё сразу в одно нажатие", 0xFFFFB020, 0xFFFF5A5F, () -> open(AutoActivity.class));
         tile(g1, "🧹", "Очистка", "Реклама, телеметрия, мусор", 0xFF3DDC84, 0xFF14B8A6, () -> open(CleanActivity.class));
         tile(g1, "🚀", "Ускорение", "Анимации, кэш, память, DNS", 0xFF2E6BFF, 0xFF7B4DFF, () -> open(SpeedActivity.class));
-        tile(g2, "⬇", "Установка", "RuStore, лаунчеры, полезное", 0xFFE040FB, 0xFF7B4DFF, () -> open(InstallActivity.class));
+        tile(g2, "⬇", "Установка", "YouTube, RuStore, лаунчеры", 0xFFE040FB, 0xFF7B4DFF, () -> open(InstallActivity.class));
         tile(g2, "📦", "Приложения", "Отключить, удалить, запретить фон", 0xFF00B8D9, 0xFF2E6BFF, () -> open(AppsActivity.class));
         tile(g2, "↩", "Вернуть всё", "Откатить любые изменения", 0xFF8A93A6, 0xFF4B5563, this::restoreAll);
 
