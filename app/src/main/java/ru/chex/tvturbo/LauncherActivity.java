@@ -52,11 +52,13 @@ public class LauncherActivity extends BaseActivity {
         Map<String, Pkgs.P> pkgs = Pkgs.map(this);
         for (Launchers.L l : Launchers.ALL) {
             Ui.Row r = new Ui.Row();
-            boolean installed = pkgs.containsKey(l.pkg) && pkgs.get(l.pkg).installed;
-            r.mark = l.pkg.equals(home) ? "🏠" : l.id.equals(chosen) ? "★" : "🎨";
+            boolean builtin = Launchers.BUILTIN.equals(l.id);
+            boolean installed = builtin || (pkgs.containsKey(l.pkg) && pkgs.get(l.pkg).installed);
+            boolean isHome = builtin ? homeIsBuiltin() : l.pkg.equals(home);
+            r.mark = isHome ? "🏠" : l.id.equals(chosen) ? "★" : "🎨";
             r.name = l.name;
             r.sub = l.plus;
-            r.badge = l.pkg.equals(home) ? "главный экран" : installed ? "установлен" : "";
+            r.badge = isHome ? "главный экран" : builtin ? "встроен" : installed ? "установлен" : "";
             r.badgeColor = 0xFF3DDC84;
             r.tag = l;
             adapter.rows.add(r);
@@ -84,6 +86,12 @@ public class LauncherActivity extends BaseActivity {
 
         show(Launchers.chosen(this));
         list.requestFocus();
+    }
+
+    private boolean homeIsBuiltin() {
+        Intent i = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+        ResolveInfo ri = getPackageManager().resolveActivity(i, 0);
+        return ri != null && ri.activityInfo != null && ri.activityInfo.name.endsWith("HomeActivity");
     }
 
     private void show(Launchers.L l) {
@@ -140,6 +148,15 @@ public class LauncherActivity extends BaseActivity {
 
     /** Скачать, установить и назначить главным. Возвращает итоговый текст. Только в потоке Adb. */
     static String installAndSetHome(android.content.Context c, Adb adb, Launchers.L l, Status st) {
+        if (Launchers.BUILTIN.equals(l.id)) {
+            // встроенный — ставить не нужно, только назначить главным
+            String comp = c.getPackageName() + "/" + HomeActivity.class.getName();
+            if (adb.execSync("cmd package set-home-activity " + comp, true).ok) {
+                int off = Launchers.disableStock(c, adb);
+                return "✔ ТВ Турбо Дом стал главным экраном" + (off > 0 ? ", PatchWall отключён" : "") + ". Нажми «Домой»!";
+            }
+            return "✔ Нажми «Домой» и выбери «ТВ Турбо Дом» → «Всегда».";
+        }
         File f = new File(c.getCacheDir(), "launcher.apk");
         try {
             String url = InstallActivity.latestGithubApk(l.repo, l.asset, "");

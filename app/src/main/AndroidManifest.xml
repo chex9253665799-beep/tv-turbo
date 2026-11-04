@@ -24,6 +24,22 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- «ТВ Турбо Дом» — главный экран (кнопка «Домой») -->
+        <activity
+            android:name=".HomeActivity"
+            android:exported="true"
+            android:label="ТВ Турбо Дом"
+            android:launchMode="singleTask"
+            android:stateNotNeeded="true"
+            android:clearTaskOnLaunch="true"
+            android:excludeFromRecents="true"
+            android:screenOrientation="landscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
         <activity android:name=".CleanActivity" android:exported="false" />
         <activity android:name=".AppsActivity" android:exported="false" />
         <activity android:name=".SpeedActivity" android:exported="false" />

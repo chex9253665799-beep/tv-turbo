@@ -16,7 +16,16 @@ public final class Launchers {
         }
     }
 
+    /** Встроенный главный экран ТВ Турбо — ставить не нужно. */
+    public static final String BUILTIN = "home";
+
     public static final List<L> ALL = Arrays.asList(
+        new L(BUILTIN, "ТВ Турбо Дом", "ru.chex.tvturbo", "", "",
+            "https://raw.githubusercontent.com/chex9253665799-beep/tv-turbo/main/docs/home.png",
+            "Наш главный экран в стиле PatchWall — но бесплатный: без рекламы, подписок и чужих рекомендаций. "
+                + "Только твои приложения, сами разложены по разделам: Кино, ТВ, Видео, Детям, Музыка. "
+                + "Ряд «Любимые», крупные плитки, часы, кнопки «Источник» и «Настройки». Работает на любом Android TV.",
+            "Как PatchWall · бесплатно · свои приложения"),
         new L("ltv", "LTvLauncher", "com.leanbitlab.ltvL",
             "leanbitlab-org/LtvLauncher", "universal",
             "https://raw.githubusercontent.com/leanbitlab-org/LtvLauncher/master/fastlane/metadata/android/en-US/images/tvScreenshots/screenshot_1.png",
@@ -81,7 +90,7 @@ public final class Launchers {
     }
 
     public static L chosen(Context c) {
-        return byId(c.getSharedPreferences("launcher", Context.MODE_PRIVATE).getString("choice", "ltv"));
+        return byId(c.getSharedPreferences("launcher", Context.MODE_PRIVATE).getString("choice", BUILTIN));
     }
 
     public static void choose(Context c, String id) {

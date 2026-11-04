@@ -67,6 +67,10 @@ public class AutoActivity extends ListScreen {
     /** Выбранный лаунчер уже установлен и стоит главным экраном — повторно не ставим. */
     private boolean launcherReady() {
         Launchers.L l = Launchers.chosen(this);
+        if (Launchers.BUILTIN.equals(l.id)) {
+            ResolveInfo ri = getPackageManager().resolveActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0);
+            return ri != null && ri.activityInfo != null && ri.activityInfo.name.endsWith("HomeActivity");
+        }
         return l.pkg.equals(Pkgs.currentHome(this));
     }
 
