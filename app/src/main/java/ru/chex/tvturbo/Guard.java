@@ -67,6 +67,7 @@ public final class Guard {
         int fixed = 0;
         StringBuilder what = new StringBuilder();
         seed(c, adb);
+        Launchers.dropBuiltin(c, adb);
 
         // 1. отключённые пакеты — ТВ после обновления прошивки может включить их обратно
         Map<String, Pkgs.P> pkgs = Pkgs.map(c);

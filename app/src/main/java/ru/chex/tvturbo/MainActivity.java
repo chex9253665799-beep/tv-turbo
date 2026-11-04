@@ -165,6 +165,7 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
             else {
                 // чтобы ТВ не усыплял «Стража» и разрешал ему работать в фоне
                 adb.run("dumpsys deviceidle whitelist +" + getPackageName() + "; cmd appops set " + getPackageName() + " RUN_ANY_IN_BACKGROUND allow", null);
+                adb.background(() -> Launchers.dropBuiltin(this, adb));   // откат MiVision → заводской главный экран
                 Updater.checkAndInstall(this, false, this::updateStatus);
             }
         });

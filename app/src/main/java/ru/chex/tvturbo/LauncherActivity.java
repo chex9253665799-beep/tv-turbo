@@ -98,6 +98,12 @@ public class LauncherActivity extends BaseActivity {
         current = l;
         name.setText(l.name);
         desc.setText(l.desc);
+        if (l.preview.isEmpty()) {
+            preview.setImageBitmap(null);
+            previewText.setVisibility(View.VISIBLE);
+            previewText.setText(l.repo.startsWith("play:") ? "Скриншоты — на странице в Google Play" : "Скриншоты — в описании приложения");
+            return;
+        }
         Bitmap bmp = cache.get(l.id);
         if (bmp != null) { preview.setImageBitmap(bmp); previewText.setVisibility(View.GONE); return; }
         preview.setImageBitmap(null);
@@ -131,7 +137,7 @@ public class LauncherActivity extends BaseActivity {
 
     private void restoreStock() {
         if (!Ui.needAdb(this)) return;
-        String[] stock = Launchers.STOCK;
+        String[] stock = Launchers.GOOGLE;   // PatchWall не возвращаем
         adb.background(() -> {
             for (String p : stock) adb.execSync(Pkgs.cmdEnable(p), false);
             String comp = null;
@@ -153,9 +159,25 @@ public class LauncherActivity extends BaseActivity {
             String comp = c.getPackageName() + "/" + HomeActivity.class.getName();
             return makeHome(c, adb, comp, c.getPackageName(), "MiVision TV", st);
         }
+        // из Google Play: открыть страницу, поставить там, потом нажать ещё раз
+        if (l.repo.startsWith("play:")) {
+            if (homeComponent(c, l.pkg) != null) return makeHome(c, adb, homeComponent(c, l.pkg), l.pkg, l.name, st);
+            String pkg = l.repo.substring(5);
+            android.content.Intent m = new android.content.Intent(android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("market://details?id=" + pkg)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            try { c.startActivity(m); } catch (Throwable t) {
+                return "✖ Google Play не открылся. Найди «" + l.name + "» в Google Play вручную.";
+            }
+            return "Установи «" + l.name + "» в Google Play, вернись сюда и нажми «Установить и сделать главным» ещё раз.";
+        }
         File f = new File(c.getCacheDir(), "launcher.apk");
         try {
-            String url = InstallActivity.latestGithubApk(l.repo, l.asset, "");
+            String url;
+            if (l.repo.startsWith("fdroid:")) {
+                String pkg = l.repo.substring(7);
+                org.json.JSONObject o = new org.json.JSONObject(new String(InstallActivity.download("https://f-droid.org/api/v1/packages/" + pkg), "UTF-8"));
+                url = "https://f-droid.org/repo/" + pkg + "_" + o.getLong("suggestedVersionCode") + ".apk";
+            } else url = InstallActivity.latestGithubApk(l.repo, l.asset, "");
             byte[] data = InstallActivity.download(url, p -> st.on("Скачиваю " + l.name + "… " + p + "%"));
             try (OutputStream o = new FileOutputStream(f)) { o.write(data); }
         } catch (Throwable t) {

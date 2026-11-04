@@ -16,16 +16,10 @@ public final class Launchers {
         }
     }
 
-    /** Встроенный главный экран ТВ Турбо — ставить не нужно. */
+    /** Встроенный главный экран больше не предлагается (оставлено для совместимости). */
     public static final String BUILTIN = "home";
 
     public static final List<L> ALL = Arrays.asList(
-        new L(BUILTIN, "MiVision TV", "ru.chex.tvturbo", "", "",
-            "https://raw.githubusercontent.com/chex9253665799-beep/tv-turbo/main/docs/mivision.png",
-            "Наш главный экран в стиле Xiaomi TV — бесплатно, без рекламы и подписок. Фильмы и сериалы с обложками "
-                + "из твоих приложений (КИОН, Иви, Wink…), только установленные приложения, настоящая погода, ТВ-каналы, поиск. "
-                + "Работает на любом Android TV.",
-            "Стиль Xiaomi · фильмы из твоих приложений"),
         new L("ltv", "LTvLauncher", "com.leanbitlab.ltvL",
             "leanbitlab-org/LtvLauncher", "universal",
             "https://raw.githubusercontent.com/leanbitlab-org/LtvLauncher/master/fastlane/metadata/android/en-US/images/tvScreenshots/screenshot_1.png",
@@ -37,8 +31,60 @@ public final class Launchers {
             "https://raw.githubusercontent.com/wiiguy/lightweight_androidtv_launcher/main/fastlane/metadata/android/en-US/images/tvScreenshots/01_home_screen.png",
             "Сверхлёгкий главный экран: занимает всего 30–40 МБ памяти. Тёмная тема, до 15 приложений на главном, "
                 + "поиск по приложениям, обои по желанию. Лучший выбор для слабых ТВ с 1–1.5 ГБ памяти.",
-            "Самый лёгкий · 30–40 МБ")
+            "Самый лёгкий · 30–40 МБ"),
+        new L("flauncher", "FLauncher", "me.efesser.flauncher",
+            "fdroid:me.efesser.flauncher", "", "",
+            "Знаменитый открытый лаунчер для Android TV: категории приложений, свои обои, часы, без рекламы. "
+                + "На нём основан LTvLauncher. Ставится из каталога F-Droid.",
+            "Классика · открытый код"),
+        new L("projectivy", "Projectivy Launcher", "com.spocky.projengmenu",
+            "play:com.spocky.projengmenu", "", "",
+            "Самый популярный сторонний лаунчер для Android TV: красивый, с превью каналов, обоями и гибкой настройкой. "
+                + "Бесплатный, ставится из Google Play (откроется его страница).",
+            "Самый популярный · Google Play"),
+        new L("atv", "ATV Launcher", "ca.dstudio.atvlauncher.free",
+            "play:ca.dstudio.atvlauncher.free", "", "",
+            "Простой и быстрый лаунчер с крупными плитками и группами. Бесплатный, ставится из Google Play.",
+            "Простой · Google Play"),
+        new L("wolf", "Wolf Launcher", "com.wolf.firelauncher",
+            "play:com.wolf.firelauncher", "", "",
+            "Лёгкий настраиваемый лаунчер: свои ряды, обои, скрытие приложений. Бесплатный, ставится из Google Play.",
+            "Настраиваемый · Google Play")
     );
+
+    /** Заводские Google-лаунчеры (без PatchWall). */
+    public static final String[] GOOGLE = {"com.google.android.tvlauncher", "com.google.android.apps.tv.launcherx", "com.google.android.leanbacklauncher"};
+
+    /**
+     * Откат MiVision: вернуть заводской главный экран и выключить встроенный лаунчер ТВ Турбо.
+     * Встроенный выключаем ТОЛЬКО когда заводской точно включён — иначе ТВ останется без «Домой».
+     * Только в потоке Adb.
+     */
+    public static void dropBuiltin(Context c, Adb adb) {
+        android.content.pm.PackageManager pm = c.getPackageManager();
+        android.content.ComponentName mine = new android.content.ComponentName(c, ru.chex.tvturbo.HomeActivity.class);
+        if (pm.getComponentEnabledSetting(mine) == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED) return;
+        Profile.allow(c, GOOGLE);
+        Profile.allow(c, c.getPackageName());
+        boolean stockOk = false;
+        for (String g : GOOGLE) {
+            if (adb.isConnected()) adb.execSync(Pkgs.cmdEnable(g) + " 2>/dev/null", false);
+            try { if (pm.getApplicationInfo(g, 0).enabled) stockOk = true; } catch (Throwable ignored) { }
+        }
+        // есть ли другой главный экран, кроме нашего
+        for (android.content.pm.ResolveInfo ri : pm.queryIntentActivities(
+                new android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME), 0))
+            if (ri.activityInfo != null && !ri.activityInfo.packageName.equals(c.getPackageName())
+                    && !"android".equals(ri.activityInfo.packageName) && !isPatchWall(ri.activityInfo.packageName)) stockOk = true;
+        if (!stockOk) return;   // нечем заменить — оставляем, попробуем при следующем подключении
+        if (adb.isConnected()) for (String g : GOOGLE) {
+            String comp = ru.chex.tvturbo.LauncherActivity.homeComponent(c, g);
+            if (comp != null) { adb.execSync("cmd package set-home-activity " + comp, true); break; }
+        }
+        pm.setComponentEnabledSetting(mine, android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                android.content.pm.PackageManager.DONT_KILL_APP);
+        Profile.clearHome(c);
+    }
 
     /** Стандартные главные экраны: PatchWall Xiaomi (с платными подписками), Google TV, Android TV. */
     public static final String[] STOCK = {
@@ -90,7 +136,7 @@ public final class Launchers {
     }
 
     public static L chosen(Context c) {
-        return byId(c.getSharedPreferences("launcher", Context.MODE_PRIVATE).getString("choice", BUILTIN));
+        return byId(c.getSharedPreferences("launcher", Context.MODE_PRIVATE).getString("choice", "ltv"));
     }
 
     public static void choose(Context c, String id) {

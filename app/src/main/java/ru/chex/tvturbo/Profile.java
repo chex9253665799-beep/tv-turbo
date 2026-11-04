@@ -65,6 +65,20 @@ public final class Profile {
         e.apply();
     }
 
+    /** Убрать пакеты из «должны быть отключены» (чтобы Страж не отключал их снова). */
+    public static void allow(Context c, String... pkgs) {
+        Set<String> dis = disabled(c);
+        boolean ch = false;
+        for (String p : pkgs) ch |= dis.remove(p);
+        SharedPreferences.Editor e = sp(c).edit();
+        if (ch) e.putStringSet("disabled", dis);
+        String h = home(c);
+        if (h != null) for (String p : pkgs) if (h.startsWith(p + "/")) e.remove("home");
+        e.apply();
+    }
+
+    public static void clearHome(Context c) { sp(c).edit().remove("home").apply(); }
+
     /** Сброс профиля (после «Вернуть всё»). */
     public static void clearPackages(Context c) {
         sp(c).edit().remove("disabled").remove("nobg").apply();
