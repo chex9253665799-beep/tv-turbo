@@ -390,8 +390,19 @@ public final class Doctor {
             add(o, "Память", "Дата выпуска eMMC", get(mm, "date"));
             add(o, "Память", "Износ eMMC (A/B)", get(mm, "life_time") + "  · резерв: " + get(mm, "pre_eol_info"));
         }
-        String blocks = sh(adb, "cat /sys/block/mmcblk0/size 2>/dev/null").trim();
-        try { add(o, "Память", "Объём флеш-памяти", (Long.parseLong(blocks) * 512 / 1_000_000_000L) + " ГБ"); } catch (Throwable ignored) { }
+        // объём флеш-памяти: целый диск из /proc/partitions (mmcblk0 / sda), размер в КБ
+        long diskKb = 0;
+        for (String l : sh(adb, "cat /proc/partitions 2>/dev/null").split("\n")) {
+            String[] f = l.trim().split("\\s+");
+            if (f.length == 4 && f[3].matches("mmcblk\\d+|sd[a-z]")) try { diskKb = Math.max(diskKb, Long.parseLong(f[2])); } catch (Throwable ignored) { }
+        }
+        if (diskKb == 0) try { diskKb = Long.parseLong(sh(adb, "cat /sys/block/mmcblk0/size 2>/dev/null").trim()) / 2; } catch (Throwable ignored) { }
+        if (diskKb > 0) {
+            double gb = diskKb * 1024.0 / 1_000_000_000.0;
+            int nominal = 4;
+            while (nominal < gb * 0.9 && nominal < 1024) nominal *= 2;   // 7.3 → 8 ГБ, 14.6 → 16 ГБ
+            add(o, "Память", "Объём флеш-памяти", nominal + " ГБ");
+        }
 
         add(o, "Экран и матрица", "Разрешение интерфейса", grab(sh(adb, "wm size"), "(?:Physical|Override) size:\\s*(\\S+)"));
         add(o, "Экран и матрица", "Плотность", grab(sh(adb, "wm density"), "density:\\s*(\\d+)"));
@@ -405,6 +416,18 @@ public final class Doctor {
                 panelProps += e.getKey() + "=" + e.getValue() + "\n";
         String panelFiles = sh(adb, "ls /tvconfig/config/panel /vendor/tvconfig/config/panel 2>/dev/null | head -12").trim();
         String panelName = cleanPanel(panel);
+        // открыть активный файл панели и достать из него код самой матрицы (например LVB430QUF7CPSH1T0X)
+        String panelCode = "";
+        Matcher ap = Pattern.compile("(?i)m_pPanelName\\s*=\\s*\"([^\"]+\\.ini)\"").matcher(panel);
+        if (ap.find()) {
+            String path = ap.group(1);
+            String inner = "";
+            for (String cand : new String[]{path, "/vendor/tvconfig" + path, "/tvconfig" + path, path.replace("/config/", "/vendor/tvconfig/config/")})
+                if (inner.isEmpty()) inner = sh(adb, "grep -m1 -iE 'm_pPanelName|PanelName' '" + cand + "' 2>/dev/null");
+            Matcher pc = Pattern.compile("(?i)PanelName\\s*=\\s*\"?([A-Za-z0-9_.\\-]+)").matcher(inner);
+            if (pc.find() && !pc.group(1).toLowerCase(Locale.ROOT).endsWith(".ini")) panelCode = pc.group(1);
+        }
+        if (!panelCode.isEmpty()) panelName = panelCode + (panelName.isEmpty() ? "" : "  (конфиг " + panelName + ")");
         // Xiaomi пишет матрицу в загрузочные параметры: производитель, диагональ, разрешение
         String pv = first(p, "ro.boot.mi.panel_vendor", "ro.boot.panel_vendor");
         String ps = first(p, "ro.boot.mi.panel_size", "ro.boot.panel_size");
