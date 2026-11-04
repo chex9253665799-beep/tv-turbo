@@ -44,6 +44,15 @@ public final class Ui {
             TextView b = v.findViewById(R.id.badge);
             b.setText(r.badge);
             b.setTextColor(r.badgeColor);
+            if (r.badge.isEmpty()) b.setBackground(null);
+            else {
+                android.graphics.drawable.GradientDrawable pill = new android.graphics.drawable.GradientDrawable();
+                pill.setCornerRadius(dp(b.getContext(), 100));
+                pill.setColor((r.badgeColor & 0x00FFFFFF) | 0x26000000);
+                b.setBackground(pill);
+                int h = dp(b.getContext(), 12), vv = dp(b.getContext(), 5);
+                b.setPadding(h, vv, h, vv);
+            }
             return v;
         }
     }

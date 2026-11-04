@@ -19,7 +19,11 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
+      - name: Android SDK (уже есть на сервере)
+        run: |
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          ls $ANDROID_SDK_ROOT/platforms | tail -3
 
       - uses: gradle/actions/setup-gradle@v4
         with:

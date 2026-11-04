@@ -113,6 +113,23 @@ public final class Adb {
     /** Выполнить в главном потоке. */
     public void ui(Runnable r) { main.post(r); }
 
+    /** Синхронная установка APK. Только из потока worker. */
+    public Result installSync(File apk) {
+        for (int attempt = 0; attempt < 2; attempt++) {
+            if (dadb == null && connectNow() != null) return new Result(false, "нет подключения");
+            try {
+                dadb.install(apk);
+                logLine("✔ Установлено: " + apk.getName());
+                return new Result(true, "Установлено");
+            } catch (Throwable t) {
+                String m = String.valueOf(t.getMessage());
+                if (m.contains("INSTALL_") || m.contains("Failure")) { logLine("✖ Ошибка установки: " + m); return new Result(false, m); }
+                closeQuietly();
+            }
+        }
+        return new Result(false, "ошибка соединения");
+    }
+
     /** Установить APK. */
     public void install(File apk, Callback cb) {
         worker.execute(() -> {

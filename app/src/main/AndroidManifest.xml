@@ -25,5 +25,8 @@
         <activity android:name=".CleanActivity" android:exported="false" />
         <activity android:name=".AppsActivity" android:exported="false" />
         <activity android:name=".SpeedActivity" android:exported="false" />
+        <activity android:name=".AutoActivity" android:exported="false" />
+        <activity android:name=".DiagActivity" android:exported="false" />
+        <activity android:name=".InstallActivity" android:exported="false" />
     </application>
 </manifest>

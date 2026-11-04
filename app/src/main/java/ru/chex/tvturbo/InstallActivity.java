@@ -160,7 +160,7 @@ public class InstallActivity extends ListScreen {
      * Ссылка на APK из релиза репозитория GitHub (последнего или с тегом tag).
      * Выбирает файл под процессор ТВ: universal → arm64 → armeabi-v7a; asset — обязательная часть имени.
      */
-    private static String latestGithubApk(String repo, String asset, String tag) throws Exception {
+    static String latestGithubApk(String repo, String asset, String tag) throws Exception {
         String api = "https://api.github.com/repos/" + repo + "/releases/" + (tag.isEmpty() ? "latest" : "tags/" + tag);
         JSONArray assets = new JSONObject(new String(download(api), "UTF-8")).getJSONArray("assets");
         String best = null; int bestScore = -1;
@@ -214,11 +214,11 @@ public class InstallActivity extends ListScreen {
                 .setNegativeButton("Отмена", null).show();
     }
 
-    private interface Progress { void on(int pct); }
+    interface Progress { void on(int pct); }
 
-    private static byte[] download(String url) throws Exception { return download(url, null); }
+    static byte[] download(String url) throws Exception { return download(url, null); }
 
-    private static byte[] download(String url, Progress pr) throws Exception {
+    static byte[] download(String url, Progress pr) throws Exception {
         String u = url;
         for (int redirects = 0; redirects < 6; redirects++) {
             HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
