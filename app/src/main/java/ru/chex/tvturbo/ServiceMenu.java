@@ -78,10 +78,24 @@ public final class ServiceMenu {
             }
         }
         // сначала «заводские» (factory/design), потом остальные
-        List<Found> sorted = new ArrayList<>();
-        for (Found f : out) if (f.cls.toLowerCase(Locale.ROOT).matches(".*(design|factory).*")) sorted.add(f);
-        for (Found f : out) if (!sorted.contains(f)) sorted.add(f);
+        // FactoryMenuActivity — в нём страница Info (плата, панель, ключи); дальше Design Menu, потом остальное
+        List<Found> sorted = new ArrayList<>(out);
+        java.util.Collections.sort(sorted, (a, b) -> rank(a) - rank(b));
         return sorted;
+    }
+
+    private static int rank(Found f) {
+        String n = f.cls.toLowerCase(Locale.ROOT);
+        if (n.endsWith("factorymenuactivity")) return 0;
+        if (n.contains("factorymenu")) return 1;
+        if (n.contains("design")) return 2;
+        if (n.contains("factory")) return 3;
+        return 4;
+    }
+
+    /** Главное заводское меню (FactoryMenuActivity), если есть. */
+    public static Found main(List<Found> menus) {
+        return !menus.isEmpty() && rank(menus.get(0)) == 0 ? menus.get(0) : null;
     }
 
     /** Открыть меню, считать текст и снимок, закрыть. Только в потоке Adb. */
@@ -99,7 +113,7 @@ public final class ServiceMenu {
             Page main = read(adb);
             g.lines.addAll(main.lines);
             g.shot = main.shot;
-            addFacts(g, main, false);
+            addFacts(g, main, rank(m) == 0);   // FactoryMenu открывается сразу на странице Info — берём все строки
             // дочитать строки ниже экрана: «вниз» только двигает подсветку, ничего не меняет
             if (main.nodes.size() >= 6) {
                 adb.execSync("for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do input keyevent 20; done", false);
@@ -107,7 +121,7 @@ public final class ServiceMenu {
                 Page more = read(adb);
                 for (String l : more.lines) if (!g.lines.contains(l)) g.lines.add(l);
                 int before = g.facts.size();
-                addFacts(g, more, false);
+                addFacts(g, more, rank(m) == 0);
                 // убрать повторы
                 List<String[]> uniq = new ArrayList<>();
                 Set<String> keys = new LinkedHashSet<>();

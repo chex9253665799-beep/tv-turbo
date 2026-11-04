@@ -148,6 +148,8 @@ public class DoctorActivity extends ListScreen {
                                     + "Ищи на 4PDA по кодовому имени из «Паспорта ТВ».");
                     return;
                 }
+                ServiceMenu.Found main = ServiceMenu.main(menus);
+                if (main != null) { confirmGrab(main); return; }   // FactoryMenuActivity — сразу его
                 String[] names = new String[menus.size()];
                 for (int i = 0; i < names.length; i++) names[i] = menus.get(i).label;
                 new AlertDialog.Builder(this).setTitle("🔧 Найдено меню: " + menus.size() + " (сверху — самое вероятное)")
