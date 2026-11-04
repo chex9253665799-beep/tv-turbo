@@ -53,3 +53,13 @@ jobs:
           prerelease: false
           make_latest: true
           files: TvTurbo.apk
+
+      - name: Тестовая сборка (ветка mivision) — отдельный релиз, автообновление его не видит
+        if: github.ref == 'refs/heads/mivision'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mivision
+          name: MiVision TV (тест)
+          prerelease: true
+          make_latest: false
+          files: TvTurbo.apk
