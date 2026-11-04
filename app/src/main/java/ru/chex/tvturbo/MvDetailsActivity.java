@@ -32,11 +32,11 @@ public class MvDetailsActivity extends BaseActivity {
         int acc = Kit.accent(this);
 
         FrameLayout root = new FrameLayout(this);
-        root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, Kit.wall(this)));
+        root.setBackground(Kit.wallpaper(this));
         ImageView bg = Kit.image(this, ImageView.ScaleType.CENTER_CROP);
         bg.setAlpha(0.5f);
         root.addView(bg, new FrameLayout.LayoutParams(-1, -1));
-        Img.load(this, p.poster, bg, dp(960));
+        Img.load(this, p.wide(), bg, dp(960));
         View shade = new View(this);
         shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{0xF2050B1F, 0xCC050B1F, 0x55050B1F}));
         root.addView(shade, new FrameLayout.LayoutParams(-1, -1));
@@ -55,7 +55,7 @@ public class MvDetailsActivity extends BaseActivity {
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
         info.setPadding(dp(36), dp(10), 0, 0);
-        info.addView(Kit.text(this, ((p.isSeries() ? "СЕРИАЛ" : "ФИЛЬМ") + " · ИЗ ПРИЛОЖЕНИЯ " + p.app).toUpperCase(), 11, Kit.lighten(acc), true));
+        info.addView(Kit.text(this, ((p.isSeries() ? "СЕРИАЛ" : "ФИЛЬМ") + (p.kpId != 0 ? (p.score.isEmpty() ? "" : " · ★ " + p.score + " КИНОПОИСК") : " · ИЗ ПРИЛОЖЕНИЯ " + p.app)).toUpperCase(), 11, Kit.lighten(acc), true));
         TextView title = Kit.text(this, p.title, 38, Color.WHITE, true);
         title.setPadding(0, dp(8), 0, dp(10));
         info.addView(title);
@@ -76,7 +76,7 @@ public class MvDetailsActivity extends BaseActivity {
         }
         LinearLayout btns = new LinearLayout(this);
         btns.setPadding(0, dp(26), 0, 0);
-        TextView watch = Kit.pill(this, "▶  Смотреть в " + p.app, true, v -> open());
+        TextView watch = Kit.pill(this, R.drawable.ic_play, p.pkg.isEmpty() ? "Где смотреть" : "Смотреть в " + p.app, true, v -> open());
         watch.setTextSize(17);
         btns.addView(watch);
         favBtn = Kit.pill(this, "", false, v -> toggle());
@@ -90,9 +90,17 @@ public class MvDetailsActivity extends BaseActivity {
         setContentView(root);
         updateFav();
         watch.post(watch::requestFocus);
+        // фильм из каталога: дозагрузить описание, возраст, длительность, обложку
+        if (p.kpId != 0 && (p.desc.isEmpty() || p.durationMs == 0)) new Thread(() -> {
+            try {
+                ru.chex.tvturbo.mv.Kinopoisk.details(ru.chex.tvturbo.mv.Kinopoisk.key(this), p);
+                runOnUiThread(() -> { getIntent().putExtra("p", p.toJson().toString()); recreate(); });
+            } catch (Throwable ignored) { }
+        }).start();
     }
 
     private void open() {
+        if (p.pkg.isEmpty()) { Watch.choose(this, p); return; }
         Intent i = null;
         try { if (!p.intent.isEmpty()) i = Intent.parseUri(p.intent, Intent.URI_INTENT_SCHEME); } catch (Throwable ignored) { }
         if (i == null) {
@@ -119,7 +127,14 @@ public class MvDetailsActivity extends BaseActivity {
         updateFav();
     }
 
-    private void updateFav() { favBtn.setText(fav() ? "✔  В избранном" : "🔖  В избранное"); }
+    private void updateFav() {
+        favBtn.setText(fav() ? "В избранном" : "В избранное");
+        android.graphics.drawable.Drawable d = getResources().getDrawable(fav() ? R.drawable.ic_check : R.drawable.ic_bookmark, null);
+        int sz = dp(16);
+        d.setBounds(0, 0, sz, sz);
+        favBtn.setCompoundDrawablesRelative(d, null, null, null);
+        favBtn.setCompoundDrawablePadding(dp(8));
+    }
 
     private int dp(float v) { return Kit.dp(this, v); }
 }

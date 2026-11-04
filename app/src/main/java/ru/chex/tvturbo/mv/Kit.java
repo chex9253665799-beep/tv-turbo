@@ -109,6 +109,46 @@ public final class Kit {
         return t;
     }
 
+    /** Кнопка с векторной иконкой слева. */
+    public static TextView pill(Context c, int icon, String s, boolean primary, View.OnClickListener l) {
+        TextView t = pill(c, s, primary, l);
+        if (icon != 0) {
+            android.graphics.drawable.Drawable d = c.getResources().getDrawable(icon, null).mutate();
+            int sz = dp(c, 16);
+            d.setBounds(0, 0, sz, sz);
+            t.setCompoundDrawablesRelative(d, null, null, null);
+            t.setCompoundDrawablePadding(s.isEmpty() ? 0 : dp(c, 8));
+        }
+        return t;
+    }
+
+    /** Векторная иконка заданного цвета. */
+    public static ImageView icon(Context c, int res, int color) {
+        ImageView iv = new ImageView(c);
+        iv.setImageResource(res);
+        iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        if (color != 0) iv.setColorFilter(color);
+        return iv;
+    }
+
+    /** Фон: градиент обоев + мягкое радиальное свечение без резких краёв. */
+    public static android.graphics.drawable.Drawable wallpaper(Context c) {
+        int[] w = wall(c);
+        int acc = accent(c);
+        GradientDrawable base = new GradientDrawable(GradientDrawable.Orientation.TL_BR, w);
+        GradientDrawable g1 = new GradientDrawable();
+        g1.setGradientType(GradientDrawable.RADIAL_GRADIENT);
+        g1.setColors(new int[]{alpha(acc, 0x55), alpha(acc, 0x00)});
+        g1.setGradientRadius(dp(c, 520));
+        g1.setGradientCenter(0f, 1f);
+        GradientDrawable g2 = new GradientDrawable();
+        g2.setGradientType(GradientDrawable.RADIAL_GRADIENT);
+        g2.setColors(new int[]{0x337B4DFF, 0x007B4DFF});
+        g2.setGradientRadius(dp(c, 640));
+        g2.setGradientCenter(1f, 0f);
+        return new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[]{base, g1, g2});
+    }
+
     /** Заголовок ряда, справа — ссылка «Все →». */
     public static LinearLayout rowTitle(Context c, String title, String more, View.OnClickListener onMore) {
         LinearLayout r = new LinearLayout(c);

@@ -6,7 +6,8 @@ import org.json.JSONObject;
 public final class Program {
     public long id;
     public String pkg = "", app = "", title = "", desc = "", poster = "", intent = "",
-            genre = "", rating = "", year = "", channel = "";
+            genre = "", rating = "", year = "", channel = "", cover = "", score = "";
+    public long kpId;              // id в каталоге Кинопоиска (0 — фильм из приложения)
     public int type = -1;          // 0 фильм, 1 сериал, 2 сезон, 3 серия, 4 клип …
     public long durationMs, positionMs, engagedAt;
     public boolean watchNext;      // из «Продолжить просмотр»
@@ -18,7 +19,10 @@ public final class Program {
         return durationMs > 0 ? (int) Math.min(100, 100 * positionMs / durationMs) : 0;
     }
 
-    public String key() { return pkg + "|" + title; }
+    public String key() { return kpId != 0 ? "kp" + kpId : pkg + "|" + title; }
+
+    /** Широкая картинка для баннера: обложка, иначе постер. */
+    public String wide() { return cover.isEmpty() ? poster : cover; }
 
     public JSONObject toJson() {
         JSONObject o = new JSONObject();
@@ -26,7 +30,7 @@ public final class Program {
             o.put("pkg", pkg).put("app", app).put("title", title).put("desc", desc).put("poster", poster)
              .put("intent", intent).put("genre", genre).put("rating", rating).put("year", year)
              .put("channel", channel).put("type", type).put("dur", durationMs).put("pos", positionMs)
-             .put("eng", engagedAt).put("wn", watchNext);
+             .put("eng", engagedAt).put("wn", watchNext).put("kp", kpId).put("cover", cover).put("score", score);
         } catch (Throwable ignored) { }
         return o;
     }
@@ -38,6 +42,7 @@ public final class Program {
         p.genre = o.optString("genre"); p.rating = o.optString("rating"); p.year = o.optString("year");
         p.channel = o.optString("channel"); p.type = o.optInt("type", -1); p.durationMs = o.optLong("dur");
         p.positionMs = o.optLong("pos"); p.engagedAt = o.optLong("eng"); p.watchNext = o.optBoolean("wn");
+        p.kpId = o.optLong("kp"); p.cover = o.optString("cover"); p.score = o.optString("score");
         return p;
     }
 }

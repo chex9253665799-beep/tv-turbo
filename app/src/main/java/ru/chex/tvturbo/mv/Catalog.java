@@ -46,6 +46,39 @@ public final class Catalog {
 
     /** Прочитать подборки всех приложений. Сеть не нужна. Вызывать в фоне. */
     public static Catalog load(Context c) {
+        Catalog cat = loadApps(c);
+        if (!cat.all.isEmpty()) return cat;
+        // приложения подборок не отдали — берём каталог Кинопоиска (если введён ключ)
+        if (!Kinopoisk.key(c).isEmpty()) {
+            File f = file(c);
+            Catalog old = cached(c);
+            if (old.fromKp && System.currentTimeMillis() - f.lastModified() < 6 * 3600_000L && !old.all.isEmpty()) {
+                old.watchNext.addAll(cat.watchNext);
+                return old;
+            }
+            Catalog kp = new Catalog();
+            kp.watchNext.addAll(cat.watchNext);
+            try {
+                Kinopoisk.fill(c, kp);
+                kp.available = true;
+                kp.fromKp = true;
+                kp.status = "Кинопоиск: " + kp.all.size();
+                save(c, kp);
+                return kp;
+            } catch (Throwable t) {
+                if (!old.all.isEmpty()) return old;
+                cat.status = "Каталог Кинопоиска: " + t.getMessage();
+                return cat;
+            }
+        }
+        if (cat.available) cat.status = "NOKEY";
+        return cat;
+    }
+
+    public boolean fromKp;
+
+    /** Подборки, опубликованные установленными приложениями (TvProvider). */
+    private static Catalog loadApps(Context c) {
         Catalog cat = new Catalog();
         Adb adb = Adb.get(c);
         if (!adb.isConnected()) { cat.status = "нет подключения к отладке"; return cat; }
@@ -86,10 +119,8 @@ public final class Catalog {
         }
         Collections.sort(cat.watchNext, (a, b) -> Long.compare(b.engagedAt, a.engagedAt));
         cat.available = true;
-        cat.status = cat.all.isEmpty() && cat.watchNext.isEmpty()
-                ? "Приложения пока ничего не опубликовали — открой КИОН/Иви/Wink хотя бы раз"
-                : "фильмов и сериалов: " + (cat.all.size() + cat.watchNext.size());
-        save(c, cat);
+        cat.status = "фильмов и сериалов: " + (cat.all.size() + cat.watchNext.size());
+        if (!cat.all.isEmpty()) save(c, cat);
         return cat;
     }
 
@@ -168,13 +199,14 @@ public final class Catalog {
     /** Карусель баннера: по одному лучшему с постером из каждого приложения, потом остальные. */
     public List<Program> featured(int max) {
         List<Program> out = new ArrayList<>();
+        for (Program p : all) if (out.size() < max && !p.cover.isEmpty()) out.add(p);      // сначала с широкой обложкой
         Map<String, Integer> perApp = new HashMap<>();
-        for (int round = 0; round < 3 && out.size() < max; round++)
+        for (int round = 0; round < 6 && out.size() < max; round++)
             for (Program p : all) {
                 if (out.size() >= max) break;
                 if (p.poster.isEmpty() || out.contains(p)) continue;
                 int n = perApp.containsKey(p.pkg) ? perApp.get(p.pkg) : 0;
-                if (n > round) continue;
+                if (n > round && !p.pkg.isEmpty()) continue;
                 perApp.put(p.pkg, n + 1);
                 out.add(p);
             }
@@ -196,10 +228,14 @@ public final class Catalog {
     private static void save(Context c, Catalog cat) {
         try {
             JSONObject o = new JSONObject();
-            JSONArray a = new JSONArray(), w = new JSONArray();
-            for (Program p : cat.all) a.put(p.toJson());
+            JSONArray rows = new JSONArray(), w = new JSONArray();
+            for (Map.Entry<String, List<Program>> e : cat.channels.entrySet()) {
+                JSONArray items = new JSONArray();
+                for (Program p : e.getValue()) items.put(p.toJson());
+                rows.put(new JSONObject().put("name", e.getKey()).put("items", items));
+            }
             for (Program p : cat.watchNext) w.put(p.toJson());
-            o.put("all", a).put("wn", w);
+            o.put("rows", rows).put("wn", w).put("kp", cat.fromKp);
             try (FileOutputStream f = new FileOutputStream(file(c))) { f.write(o.toString().getBytes("UTF-8")); }
         } catch (Throwable ignored) { }
     }
@@ -208,16 +244,22 @@ public final class Catalog {
         Catalog cat = new Catalog();
         try (FileInputStream in = new FileInputStream(file(c))) {
             JSONObject o = new JSONObject(new String(Img.readAll(in), "UTF-8"));
-            JSONArray a = o.optJSONArray("all"), w = o.optJSONArray("wn");
-            if (a != null) for (int i = 0; i < a.length(); i++) {
-                Program p = Program.fromJson(a.getJSONObject(i));
-                cat.all.add(p);
-                List<Program> l = cat.channels.get(p.channel);
-                if (l == null) cat.channels.put(p.channel, l = new ArrayList<>());
-                l.add(p);
+            cat.fromKp = o.optBoolean("kp");
+            JSONArray rows = o.optJSONArray("rows"), w = o.optJSONArray("wn");
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            if (rows != null) for (int i = 0; i < rows.length(); i++) {
+                JSONObject r = rows.getJSONObject(i);
+                JSONArray items = r.getJSONArray("items");
+                List<Program> l = new ArrayList<>();
+                for (int j = 0; j < items.length(); j++) {
+                    Program p = Program.fromJson(items.getJSONObject(j));
+                    l.add(p);
+                    if (seen.add(p.key())) cat.all.add(p);
+                }
+                cat.channels.put(r.getString("name"), l);
             }
             if (w != null) for (int i = 0; i < w.length(); i++) cat.watchNext.add(Program.fromJson(w.getJSONObject(i)));
-            cat.available = true;
+            cat.available = !cat.all.isEmpty();
             cat.status = "из кэша";
         } catch (Throwable ignored) { }
         return cat;

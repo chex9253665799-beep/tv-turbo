@@ -41,6 +41,7 @@ import java.util.Map;
 
 import ru.chex.tvturbo.mv.Catalog;
 import ru.chex.tvturbo.mv.Img;
+import ru.chex.tvturbo.mv.Kinopoisk;
 import ru.chex.tvturbo.mv.Kit;
 import ru.chex.tvturbo.mv.Program;
 import ru.chex.tvturbo.mv.Tv;
@@ -71,7 +72,8 @@ public class HomeActivity extends BaseActivity {
 
     private FrameLayout root, content;
     private LinearLayout nav, side;
-    private TextView clock, date, wxTemp, wxCity, wxIcon;
+    private TextView clock, date, wxTemp, wxCity;
+    private ImageView wxIcon;
     private String page = HOME;
     private final Map<String, String> lastFocus = new HashMap<>();   // страница → ключ карточки
     private Runnable bannerTick;
@@ -102,6 +104,7 @@ public class HomeActivity extends BaseActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        phone.stop();
         h.removeCallbacksAndMessages(null);
         View f = getCurrentFocus();
         if (f != null && f.getTag() instanceof String) lastFocus.put(page, (String) f.getTag());
@@ -163,10 +166,6 @@ public class HomeActivity extends BaseActivity {
         root = new FrameLayout(this);
         applyWall();
 
-        // мягкое свечение в углах
-        View glowL = new View(this);
-        glowL.setBackground(new GradientDrawable(GradientDrawable.Orientation.BL_TR, new int[]{Kit.alpha(acc, 0x40), 0}));
-        root.addView(glowL, new FrameLayout.LayoutParams(dp(420), dp(300), Gravity.BOTTOM | Gravity.START));
 
         // шапка
         LinearLayout top = new LinearLayout(this);
@@ -190,8 +189,8 @@ public class HomeActivity extends BaseActivity {
         wx.setBackground(wxBg);
         wx.setOnFocusChangeListener((v, f) -> wxBg.setColor(f ? Kit.alpha(acc, 0x66) : 0));
         wx.setOnClickListener(v -> show(WEATHER));
-        wxIcon = Kit.text(this, "", 22, Color.WHITE, false);
-        wx.addView(wxIcon);
+        wxIcon = new ImageView(this);
+        wx.addView(wxIcon, new LinearLayout.LayoutParams(dp(30), dp(30)));
         LinearLayout wxc = new LinearLayout(this);
         wxc.setOrientation(LinearLayout.VERTICAL);
         wxc.setPadding(dp(6), 0, 0, 0);
@@ -211,9 +210,10 @@ public class HomeActivity extends BaseActivity {
         date = Kit.text(this, "", 10, Kit.MUTED, false);
         ck.addView(clock); ck.addView(date);
         top.addView(ck);
-        TextView wifi = Kit.text(this, "📶", 17, Color.WHITE, false);
-        wifi.setPadding(dp(14), 0, 0, 0);
-        top.addView(wifi);
+        ImageView wifi = Kit.icon(this, R.drawable.ic_wifi, Color.WHITE);
+        LinearLayout.LayoutParams wl = new LinearLayout.LayoutParams(dp(22), dp(22));
+        wl.setMarginStart(dp(14));
+        top.addView(wifi, wl);
         root.addView(top, new FrameLayout.LayoutParams(-1, dp(56), Gravity.TOP));
         updateWeatherChip();
 
@@ -221,10 +221,11 @@ public class HomeActivity extends BaseActivity {
         side = new LinearLayout(this);
         side.setOrientation(LinearLayout.VERTICAL);
         side.setGravity(Gravity.CENTER_HORIZONTAL);
-        String[][] icons = {{"🔍", SEARCH}, {"🏠", HOME}, {"🎬", MOVIES}, {"📺", TV}, {"▦", APPS}, {"★", FAV}, {"⚙", SETTINGS}};
-        for (String[] ic : icons) side.addView(sideIcon(ic[0], ic[1]));
+        Object[][] icons = {{R.drawable.ic_search, SEARCH}, {R.drawable.ic_home, HOME}, {R.drawable.ic_movie, MOVIES},
+                {R.drawable.ic_tv, TV}, {R.drawable.ic_apps, APPS}, {R.drawable.ic_star, FAV}, {R.drawable.ic_settings, SETTINGS}};
+        for (Object[] ic : icons) side.addView(sideIcon((Integer) ic[0], (String) ic[1]));
         // «Источник»: системная кнопка входов (HDMI/антенна) — есть на всех Android TV
-        TextView src = (TextView) sideIcon("⎆", "Источник");
+        View src = sideIcon(R.drawable.ic_input, "Источник");
         src.setOnClickListener(v -> {
             Adb adb = Adb.get(this);
             if (adb.isConnected()) adb.run("input keyevent 178", null);
@@ -245,8 +246,7 @@ public class HomeActivity extends BaseActivity {
     }
 
     private void applyWall() {
-        int[] w = Kit.wall(this);
-        if (root != null) root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR, w));
+        if (root != null) root.setBackground(Kit.wallpaper(this));
     }
 
     private View navChip(String n) {
@@ -272,10 +272,10 @@ public class HomeActivity extends BaseActivity {
             if (g != null && f && !on) g.setAlpha(150);
             t.setBackground(g);
             t.setTextColor(on || f ? Color.WHITE : Kit.MUTED);
-            t.setText((on && HOME.equals(n) ? "🏠 " : "") + n);
+            t.setText(n);
         }
         for (int i = 0; i < side.getChildCount(); i++) {
-            TextView t = (TextView) side.getChildAt(i);
+            View t = side.getChildAt(i);
             boolean on = ((String) t.getTag()).substring(5).equals(page);
             GradientDrawable g = Kit.round(on ? Kit.alpha(acc, 0x44) : 0, dp(12));
             if (on || t.hasFocus()) g.setStroke(dp(1.5f), Kit.lighten(acc));
@@ -284,10 +284,11 @@ public class HomeActivity extends BaseActivity {
         }
     }
 
-    private View sideIcon(String icon, String target) {
-        TextView t = Kit.text(this, icon, 18, Color.WHITE, false);
+    private View sideIcon(int icon, String target) {
+        ImageView t = Kit.icon(this, icon, Color.WHITE);
         t.setTag("side:" + target);
-        t.setGravity(Gravity.CENTER);
+        int p = dp(9);
+        t.setPadding(p, p, p, p);
         t.setFocusable(true);
         t.setOnClickListener(v -> show(target));
         t.setOnFocusChangeListener((v, f) -> { styleNav(); v.animate().scaleX(f ? 1.1f : 1).scaleY(f ? 1.1f : 1).setDuration(120).start(); });
@@ -300,11 +301,11 @@ public class HomeActivity extends BaseActivity {
     private void updateWeatherChip() {
         if (wxTemp == null) return;
         if (weather != null) {
-            wxIcon.setText(Weather.emoji(weather.code));
+            wxIcon.setImageResource(Weather.icon(weather.code));
             wxTemp.setText(Weather.t(weather.temp));
             wxCity.setText(weather.city);
         } else {
-            wxIcon.setText("⛅");
+            wxIcon.setImageResource(R.drawable.wx_cloudsun);
             wxTemp.setText("—");
             wxCity.setText(weatherErr.isEmpty() ? "погода" : "нет данных");
         }
@@ -394,13 +395,15 @@ public class HomeActivity extends BaseActivity {
             for (Program p : catalog.watchNext) r.addView(posterTile(p, 150, 86), lpH(150, 86));
         }
         if (!catalog.all.isEmpty()) {
-            col.addView(Kit.rowTitle(this, "Рекомендуем", "из твоих приложений", null));
-            LinearLayout r = hrow(col);
-            for (Program p : mix(catalog.all, 14)) r.addView(posterTile(p, 136, 86), lpH(136, 86));
+            if (!catalog.fromKp) {
+                col.addView(Kit.rowTitle(this, "Рекомендуем", "из твоих приложений", null));
+                LinearLayout r = hrow(col);
+                for (Program p : mix(catalog.all, 14)) r.addView(tile(p));
+            }
             for (Map.Entry<String, List<Program>> e : catalog.channels.entrySet()) {
                 col.addView(Kit.rowTitle(this, e.getKey(), null, null));
                 LinearLayout rr = hrow(col);
-                for (Program p : e.getValue()) rr.addView(posterTile(p, 136, 86), lpH(136, 86));
+                for (Program p : e.getValue()) rr.addView(tile(p));
             }
         } else col.addView(catalogHint());
         return s;
@@ -426,13 +429,20 @@ public class HomeActivity extends BaseActivity {
         l.setOrientation(LinearLayout.VERTICAL);
         l.setPadding(dp(20), dp(16), dp(20), dp(16));
         l.addView(Kit.text(this, "Фильмы и сериалы появятся здесь сами", 16, Color.WHITE, true));
-        TextView t = Kit.text(this, catalog.status.isEmpty()
-                ? "MiVision берёт подборки из установленных приложений: КИОН, Иви, Wink, Кинопоиск и других. Открой их хотя бы раз — и обложки появятся."
+        boolean noKey = Kinopoisk.key(this).isEmpty();
+        TextView t = Kit.text(this, noKey
+                ? "Этот телевизор не отдаёт подборки приложений сторонним лаунчерам. Подключи бесплатный каталог Кинопоиска — "
+                  + "появятся постеры, новинки, популярные фильмы и сериалы. «Смотреть» откроет фильм в КИОН, Иви, Кинопоиске или Wink."
                 : catalog.status, 12, Kit.MUTED, false);
         t.setPadding(0, dp(6), 0, dp(10));
         l.addView(t);
         LinearLayout b = new LinearLayout(this);
-        b.addView(Kit.pill(this, "🔄 Обновить", true, v -> refreshAll()));
+        if (noKey) {
+            b.addView(Kit.pill(this, R.drawable.ic_plus, "Подключить каталог", true, v -> { show(SETTINGS); settingsAction("Каталог фильмов", null); }));
+            LinearLayout.LayoutParams g = new LinearLayout.LayoutParams(-2, -2);
+            g.setMarginStart(dp(10));
+            b.addView(Kit.pill(this, R.drawable.ic_refresh, "Обновить", false, v -> refreshAll()), g);
+        } else b.addView(Kit.pill(this, R.drawable.ic_refresh, "Обновить", true, v -> refreshAll()));
         l.addView(b);
         c.addView(l);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
@@ -492,17 +502,18 @@ public class HomeActivity extends BaseActivity {
             src.setText("MIVISION TV");
             title.setText("Твоё кино — в одном месте");
             desc.setText("Обложки фильмов и сериалов из КИОН, Иви, Wink и других установленных приложений появятся здесь автоматически.");
-            btns.addView(Kit.pill(this, "▦  Мои приложения", true, v -> show(APPS)));
+            btns.addView(Kit.pill(this, R.drawable.ic_apps, "Мои приложения", true, v -> show(APPS)));
             return b;
         }
         final int[] idx = {0};
         Runnable fill = () -> {
             Program p = items.get(idx[0]);
-            src.setText((p.isSeries() ? "СЕРИАЛ" : "ФИЛЬМ") + " · " + p.app.toUpperCase(new Locale("ru")));
+            src.setText((p.isSeries() ? "СЕРИАЛ" : "ФИЛЬМ") + (p.score.isEmpty() ? "" : " · ★ " + p.score)
+                    + (p.kpId != 0 ? "" : " · " + p.app.toUpperCase(new Locale("ru"))));
             title.setText(p.title);
             desc.setText(p.desc.isEmpty() ? meta(p) : p.desc);
             img.setImageDrawable(null);
-            Img.load(this, p.poster, img, dp(560));
+            Img.load(this, p.wide(), img, dp(560));
             dots.removeAllViews();
             for (int i = 0; i < items.size(); i++) {
                 View d = new View(this);
@@ -512,10 +523,10 @@ public class HomeActivity extends BaseActivity {
                 dots.addView(d, dd);
             }
         };
-        TextView watch = Kit.pill(this, "▶  Смотреть", true, v -> open(items.get(idx[0])));
+        TextView watch = Kit.pill(this, R.drawable.ic_play, "Смотреть", true, v -> open(items.get(idx[0])));
         watch.setTag("banner:watch");
-        TextView more = Kit.pill(this, "Подробнее", false, v -> details(items.get(idx[0])));
-        TextView favB = Kit.pill(this, "🔖  В избранное", false, v -> toggleFav(items.get(idx[0])));
+        TextView more = Kit.pill(this, R.drawable.ic_info, "Подробнее", false, v -> details(items.get(idx[0])));
+        TextView favB = Kit.pill(this, R.drawable.ic_bookmark, "В избранное", false, v -> toggleFav(items.get(idx[0])));
         btns.addView(watch);
         LinearLayout.LayoutParams gap = new LinearLayout.LayoutParams(-2, -2);
         gap.setMarginStart(dp(10));
@@ -602,11 +613,19 @@ public class HomeActivity extends BaseActivity {
         t.setFocusable(true);
         GradientDrawable bg = Kit.round(0x24FFFFFF, dp(12));
         t.setBackground(bg);
-        t.addView(Kit.text(this, "▦", 18, Color.WHITE, false));
-        t.addView(Kit.text(this, "Ещё", 11, Color.WHITE, false));
+        t.addView(Kit.icon(this, R.drawable.ic_apps, Color.WHITE), new LinearLayout.LayoutParams(dp(22), dp(22)));
+        TextView more = Kit.text(this, "Ещё", 11, Color.WHITE, false);
+        more.setPadding(0, dp(4), 0, 0);
+        t.addView(more);
         Kit.glow(t, bg, 1.08f, null);
         t.setOnClickListener(v -> show(APPS));
         return t;
+    }
+
+    /** Плитка фильма: из каталога — вертикальный постер, из приложения — широкая карточка. */
+    private View tile(Program p) {
+        if (p.kpId != 0) { View v = posterTile(p, 100, 150); v.setLayoutParams(lpH(100, 150)); return v; }
+        View v = posterTile(p, 136, 86); v.setLayoutParams(lpH(136, 86)); return v;
     }
 
     private View posterTile(Program p, int w, int hgt) {
@@ -629,7 +648,8 @@ public class HomeActivity extends BaseActivity {
         FrameLayout.LayoutParams tl = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
         tl.setMargins(dp(8), 0, dp(8), dp(p.watchNext ? 10 : 7));
         t.addView(title, tl);
-        TextView badge = Kit.text(this, p.app, 8, Color.WHITE, false);
+        TextView badge = Kit.text(this, p.kpId != 0 ? (p.score.isEmpty() ? "" : "★ " + p.score) : p.app, 9, Color.WHITE, p.kpId != 0);
+        if (p.kpId != 0 && p.score.isEmpty()) badge.setVisibility(View.GONE);
         badge.setBackground(Kit.round(0x88000000, dp(100)));
         badge.setPadding(dp(6), dp(2), dp(6), dp(2));
         FrameLayout.LayoutParams bl = new FrameLayout.LayoutParams(-2, -2, Gravity.END | Gravity.TOP);
@@ -668,7 +688,7 @@ public class HomeActivity extends BaseActivity {
         TextView hdr = Kit.text(this, series ? "Сериалы" : "Фильмы", 30, Color.WHITE, true);
         hdr.setPadding(dp(4), 0, 0, dp(10));
         cats.addView(hdr);
-        TextView search = Kit.pill(this, "🔍  Поиск", false, v -> show(SEARCH));
+        TextView search = Kit.pill(this, R.drawable.ic_search, "Поиск", false, v -> show(SEARCH));
         cats.addView(search);
         Map<String, List<Program>> genres = catalog.byGenre(src);
         List<String> names = new ArrayList<>();
@@ -735,7 +755,7 @@ public class HomeActivity extends BaseActivity {
         head.addView(Kit.text(this, "Все приложения", 30, Color.WHITE, true));
         TextView cnt = Kit.text(this, "  · " + apps.size() + " установлено", 13, Kit.MUTED, false);
         head.addView(cnt, new LinearLayout.LayoutParams(0, -2, 1));
-        head.addView(Kit.pill(this, "🔍  Поиск приложений", false, v -> show(SEARCH)));
+        head.addView(Kit.pill(this, R.drawable.ic_search, "Поиск приложений", false, v -> show(SEARCH)));
         col.addView(head);
 
         List<App> fav = favApps();
@@ -789,7 +809,7 @@ public class HomeActivity extends BaseActivity {
             LinearLayout l = new LinearLayout(this);
             l.setOrientation(LinearLayout.VERTICAL);
             l.setPadding(dp(24), dp(20), dp(24), dp(20));
-            l.addView(Kit.text(this, "📡  Подключи источник каналов", 20, Color.WHITE, true));
+            l.addView(Kit.text(this, "Подключи источник каналов", 20, Color.WHITE, true));
             TextView t = Kit.text(this, tvErr.isEmpty()
                     ? "Вставь адрес плейлиста M3U от своего провайдера или IPTV-сервиса — каналы, логотипы и группы появятся здесь. "
                       + "Смотреть можно и в установленных ТВ-приложениях выше."
@@ -797,7 +817,7 @@ public class HomeActivity extends BaseActivity {
             t.setPadding(0, dp(8), 0, dp(14));
             l.addView(t);
             LinearLayout b = new LinearLayout(this);
-            b.addView(Kit.pill(this, "＋  Подключить плейлист", true, v -> askPlaylist()));
+            b.addView(Kit.pill(this, R.drawable.ic_plus, "Подключить плейлист", true, v -> askPlaylist()));
             l.addView(b);
             c.addView(l);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
@@ -895,7 +915,7 @@ public class HomeActivity extends BaseActivity {
         bar.addView(q, new LinearLayout.LayoutParams(0, -2, 1));
         boolean voice = !getPackageManager().queryIntentActivities(new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH), 0).isEmpty();
         if (voice) {
-            TextView mic = Kit.pill(this, "🎤", false, v -> {
+            TextView mic = Kit.pill(this, R.drawable.ic_mic, "", false, v -> {
                 Intent vi = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                         .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                         .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU");
@@ -932,12 +952,12 @@ public class HomeActivity extends BaseActivity {
                 if (!recent.isEmpty()) {
                     results.addView(Kit.rowTitle(this, "Недавние запросы", null, null));
                     LinearLayout r = hrow(results);
-                    for (String rq : recent) r.addView(Kit.pill(this, "🕘  " + rq, false, v -> { q.setText(rq); q.setSelection(rq.length()); }), lpH(-2, -2));
+                    for (String rq : recent) r.addView(Kit.pill(this, R.drawable.ic_history, rq, false, v -> { q.setText(rq); q.setSelection(rq.length()); }), lpH(-2, -2));
                 }
                 if (!catalog.all.isEmpty()) {
                     results.addView(Kit.rowTitle(this, "Популярное сейчас", null, null));
                     LinearLayout r = hrow(results);
-                    for (Program p : mix(catalog.all, 8)) r.addView(posterTile(p, 136, 86), lpH(136, 86));
+                    for (Program p : mix(catalog.all, 8)) r.addView(tile(p));
                 }
                 return;
             }
@@ -951,13 +971,13 @@ public class HomeActivity extends BaseActivity {
             if ((all || "Фильмы".equals(searchTab)) && !mv.isEmpty()) {
                 results.addView(Kit.rowTitle(this, "Фильмы · " + mv.size(), null, null));
                 LinearLayout r = hrow(results);
-                for (Program p : mv) r.addView(posterTile(p, 136, 86), lpH(136, 86));
+                for (Program p : mv) r.addView(tile(p));
                 shown++;
             }
             if ((all || "Сериалы".equals(searchTab)) && !sr.isEmpty()) {
                 results.addView(Kit.rowTitle(this, "Сериалы · " + sr.size(), null, null));
                 LinearLayout r = hrow(results);
-                for (Program p : sr) r.addView(posterTile(p, 136, 86), lpH(136, 86));
+                for (Program p : sr) r.addView(tile(p));
                 shown++;
             }
             if ((all || "Приложения".equals(searchTab)) && !ap.isEmpty()) {
@@ -979,6 +999,17 @@ public class HomeActivity extends BaseActivity {
         });
         q.setOnEditorActionListener((v, id, e) -> {
             String text = q.getText().toString().trim();
+            if (!text.isEmpty() && !Kinopoisk.key(this).isEmpty()) new Thread(() -> {
+                try {
+                    List<Program> found = Kinopoisk.search(this, text);
+                    h.post(() -> {
+                        if (found.isEmpty() || !text.equals(q.getText().toString().trim())) return;
+                        results.addView(Kit.rowTitle(this, "В Кинопоиске · " + found.size(), null, null));
+                        LinearLayout r = hrow(results);
+                        for (Program p : found) r.addView(tile(p));
+                    });
+                } catch (Throwable ignored) { }
+            }).start();
             if (!text.isEmpty()) {
                 List<String> rec = Kit.list(this, "recent");
                 rec.remove(text); rec.add(0, text);
@@ -993,6 +1024,7 @@ public class HomeActivity extends BaseActivity {
     }
 
     private EditText searchField;
+    private final ru.chex.tvturbo.mv.PhoneInput phone = new ru.chex.tvturbo.mv.PhoneInput();
 
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
@@ -1005,7 +1037,7 @@ public class HomeActivity extends BaseActivity {
 
     // ================================================================== НАСТРОЙКИ
 
-    private static final String[] SET_MENU = {"Внешний вид", "Обои", "Погода и регион", "Приложения", "Избранное",
+    private static final String[] SET_MENU = {"Внешний вид", "Обои", "Каталог фильмов", "Погода и регион", "Приложения", "Избранное",
             "Дата и время", "Системные настройки", "ТВ Турбо", "О MiVision TV"};
 
     private View pageSettings(String section) {
@@ -1059,7 +1091,48 @@ public class HomeActivity extends BaseActivity {
         l.setOrientation(LinearLayout.VERTICAL);
         l.setPadding(dp(24), dp(18), dp(24), dp(18));
         l.addView(Kit.text(this, section, 22, Color.WHITE, true));
+        if (!"Каталог фильмов".equals(section)) phone.stop();
         switch (section) {
+            case "Каталог фильмов": {
+                boolean has = !Kinopoisk.key(this).isEmpty();
+                TextView st = Kit.text(this, has ? "Подключён. " + (catalog.fromKp ? catalog.status : "") : "Не подключён", 14, has ? 0xFF3DDC84 : 0xFFFFB020, true);
+                st.setPadding(0, dp(10), 0, dp(8));
+                l.addView(st);
+                TextView how = Kit.text(this, "Постеры, описания, новинки и популярное берутся из бесплатного каталога Кинопоиска "
+                        + "(Kinopoisk API Unofficial). Нужен личный ключ — это бесплатно, 2 минуты:\n\n"
+                        + "1. На телефоне открой kinopoiskapiunofficial.tech и зарегистрируйся по почте.\n"
+                        + "2. В профиле скопируй «API Key».\n"
+                        + "3. Открой на телефоне адрес ниже и вставь ключ — он сам придёт на телевизор.", 13, 0xFFC9D6F5, false);
+                l.addView(how);
+                String url = phone.start(this, "Вставь ключ Kinopoisk API Unofficial", v -> {
+                    Kinopoisk.setKey(this, v);
+                    new java.io.File(getFilesDir(), "mv_catalog.json").delete();
+                    Ui.toast(this, "Ключ получен, загружаю фильмы…");
+                    refreshAll();
+                    settingsAction("Каталог фильмов", panel);
+                });
+                TextView addr = Kit.text(this, url == null ? "Нет сети" : url, 22, Kit.lighten(acc), true);
+                addr.setPadding(0, dp(14), 0, dp(14));
+                l.addView(addr);
+                LinearLayout b = new LinearLayout(this);
+                b.addView(Kit.pill(this, R.drawable.ic_plus, "Ввести с пульта", false, v -> {
+                    EditText e = new EditText(this);
+                    e.setSingleLine(true);
+                    e.setText(Kinopoisk.key(this));
+                    new AlertDialog.Builder(this).setTitle("Ключ Kinopoisk API").setView(e)
+                            .setPositiveButton("Сохранить", (d, w) -> { Kinopoisk.setKey(this, e.getText().toString());
+                                new java.io.File(getFilesDir(), "mv_catalog.json").delete(); refreshAll(); settingsAction("Каталог фильмов", panel); })
+                            .setNegativeButton("Отмена", null).show();
+                }));
+                if (has) {
+                    LinearLayout.LayoutParams g = new LinearLayout.LayoutParams(-2, -2);
+                    g.setMarginStart(dp(10));
+                    b.addView(Kit.pill(this, R.drawable.ic_refresh, "Обновить фильмы", true, v -> {
+                        new java.io.File(getFilesDir(), "mv_catalog.json").delete(); refreshAll(); Ui.toast(this, "Обновляю…"); }), g);
+                }
+                l.addView(b);
+                break;
+            }
             case "Обои": {
                 l.addView(Kit.rowTitle(this, "Фон главного экрана", null, null));
                 LinearLayout r = hrow(l);
@@ -1089,25 +1162,25 @@ public class HomeActivity extends BaseActivity {
                 cur.setPadding(0, dp(10), 0, dp(14));
                 l.addView(cur);
                 LinearLayout b = new LinearLayout(this);
-                b.addView(Kit.pill(this, "📍  Определить автоматически", true, v -> {
+                b.addView(Kit.pill(this, R.drawable.ic_pin, "Определить автоматически", true, v -> {
                     Weather.setAuto(this, true);
                     getSharedPreferences("mv_weather", MODE_PRIVATE).edit().remove("manual").remove("locAt").remove("lat").apply();
                     loadWeather(); Ui.toast(this, "Определяю город…");
                 }));
                 LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(-2, -2);
                 gp.setMarginStart(dp(10));
-                b.addView(Kit.pill(this, "🏙  Выбрать город", false, v -> chooseCity()), gp);
+                b.addView(Kit.pill(this, R.drawable.ic_search, "Выбрать город", false, v -> chooseCity()), gp);
                 LinearLayout.LayoutParams gp2 = new LinearLayout.LayoutParams(-2, -2);
                 gp2.setMarginStart(dp(10));
-                b.addView(Kit.pill(this, "⛅  Прогноз", false, v -> show(WEATHER)), gp2);
+                b.addView(Kit.pill(this, R.drawable.wx_cloudsun, "Прогноз", false, v -> show(WEATHER)), gp2);
                 l.addView(b);
                 break;
             }
             case "О MiVision TV": {
                 TextView t = Kit.text(this, "MiVision TV — главный экран ТВ Турбо, версия " + Updater.currentName(this) + ".\n\n"
                         + "• Приложения — только установленные на этом телевизоре.\n"
-                        + "• Фильмы и сериалы — из подборок твоих приложений (КИОН, Иви, Wink и др.), «Смотреть» открывает их там.\n"
-                        + "• Погода — Open-Meteo.\n"
+                        + "• Фильмы и сериалы — из подборок приложений или каталога Кинопоиска; «Смотреть» открывает КИОН, Иви, Кинопоиск, Wink.\n"
+                        + "• Погода — Open-Meteo, met.no, wttr.in (что доступно).\n"
                         + "• Каналы — из подключённого тобой плейлиста.\n\n"
                         + "Без рекламы и подписок. Обновляется вместе с ТВ Турбо.", 13, 0xFFC9D6F5, false);
                 t.setPadding(0, dp(12), 0, 0);
@@ -1141,7 +1214,7 @@ public class HomeActivity extends BaseActivity {
                 }
                 l.addView(Kit.rowTitle(this, "Главный экран", null, null));
                 LinearLayout rh = hrow(l);
-                rh.addView(Kit.pill(this, "🎨  Другие лаунчеры", false, v -> safeStart(new Intent(this, LauncherActivity.class))), lpH(-2, -2));
+                rh.addView(Kit.pill(this, R.drawable.ic_home, "Другие лаунчеры", false, v -> safeStart(new Intent(this, LauncherActivity.class))), lpH(-2, -2));
             }
         }
         panel.addView(l);
@@ -1182,12 +1255,12 @@ public class HomeActivity extends BaseActivity {
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
         head.setPadding(dp(4), dp(10), 0, 0);
-        head.addView(Kit.text(this, "📍 " + (weather != null ? weather.city : Weather.cityName(this)), 16, Kit.lighten(acc), true),
+        head.addView(Kit.text(this, (weather != null ? weather.city : Weather.cityName(this)), 18, Color.WHITE, true),
                 new LinearLayout.LayoutParams(0, -2, 1));
-        head.addView(Kit.pill(this, "Сменить город", false, v -> chooseCity()));
+        head.addView(Kit.pill(this, R.drawable.ic_pin, "Сменить город", false, v -> chooseCity()));
         LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-2, -2);
         rp.setMarginStart(dp(10));
-        head.addView(Kit.pill(this, "🔄", false, v -> { loadWeather(); Ui.toast(this, "Обновляю…"); }), rp);
+        head.addView(Kit.pill(this, R.drawable.ic_refresh, "", false, v -> { loadWeather(); Ui.toast(this, "Обновляю…"); }), rp);
         col.addView(head);
 
         if (weather == null) {
@@ -1199,7 +1272,7 @@ public class HomeActivity extends BaseActivity {
         LinearLayout big = new LinearLayout(this);
         big.setGravity(Gravity.CENTER_VERTICAL);
         big.setPadding(dp(4), dp(10), 0, dp(6));
-        big.addView(Kit.text(this, Weather.emoji(weather.code), 70, Color.WHITE, false));
+        big.addView(Kit.icon(this, Weather.icon(weather.code), 0), new LinearLayout.LayoutParams(dp(110), dp(110)));
         LinearLayout bt = new LinearLayout(this);
         bt.setOrientation(LinearLayout.VERTICAL);
         bt.setPadding(dp(18), 0, 0, 0);
@@ -1209,9 +1282,9 @@ public class HomeActivity extends BaseActivity {
         big.addView(bt, new LinearLayout.LayoutParams(0, -2, 1));
         LinearLayout facts = new LinearLayout(this);
         facts.setOrientation(LinearLayout.VERTICAL);
-        facts.addView(fact("💨 Ветер", Math.round(weather.wind) + " м/с, " + Weather.windDir(weather.windDir)));
-        facts.addView(fact("💧 Влажность", Math.round(weather.humidity) + "%"));
-        if (weather.pressureMm > 0) facts.addView(fact("🌡 Давление", Math.round(weather.pressureMm) + " мм рт. ст."));
+        facts.addView(fact("Ветер", Math.round(weather.wind) + " м/с, " + Weather.windDir(weather.windDir)));
+        facts.addView(fact("Влажность", Math.round(weather.humidity) + "%"));
+        if (weather.pressureMm > 0) facts.addView(fact("Давление", Math.round(weather.pressureMm) + " мм рт. ст."));
         big.addView(facts, new LinearLayout.LayoutParams(dp(260), -2));
         col.addView(big);
 
@@ -1229,7 +1302,9 @@ public class HomeActivity extends BaseActivity {
             c.setBackground(g);
             Kit.glow(c, g, 1.06f, null);
             c.addView(Kit.text(this, first ? "Сейчас" : String.format(Locale.US, "%02d:00", (int) x[0]), 11, Kit.MUTED, false));
-            c.addView(Kit.text(this, Weather.emoji((int) x[2]), 22, Color.WHITE, false));
+            LinearLayout.LayoutParams il = new LinearLayout.LayoutParams(dp(30), dp(30));
+            il.setMargins(0, dp(4), 0, dp(4));
+            c.addView(Kit.icon(this, Weather.icon((int) x[2]), 0), il);
             c.addView(Kit.text(this, Weather.t(x[1]), 15, Color.WHITE, true));
             hr.addView(c, lpH(64, -2));
             first = false;
@@ -1248,14 +1323,16 @@ public class HomeActivity extends BaseActivity {
             r.setBackground(g);
             Kit.glow(r, g, 1.01f, null);
             r.addView(Kit.text(this, i == 0 ? "Сегодня" : wd[(int) d[0]] + ", " + (int) d[4] + " " + mon[(int) d[5]], 14, Color.WHITE, i == 0), new LinearLayout.LayoutParams(dp(140), -2));
-            r.addView(Kit.text(this, Weather.emoji((int) d[3]), 18, Color.WHITE, false), new LinearLayout.LayoutParams(dp(40), -2));
+            LinearLayout.LayoutParams dl2 = new LinearLayout.LayoutParams(dp(26), dp(26));
+            dl2.setMarginEnd(dp(14));
+            r.addView(Kit.icon(this, Weather.icon((int) d[3]), 0), dl2);
             r.addView(Kit.text(this, Weather.text((int) d[3]), 13, Kit.MUTED, false), new LinearLayout.LayoutParams(0, -2, 1));
             r.addView(Kit.text(this, Weather.t(d[1]) + " / " + Weather.t(d[2]), 14, Color.WHITE, true));
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
             lp.bottomMargin = dp(6);
             col.addView(r, lp);
         }
-        TextView srcT = Kit.text(this, "Данные: Open-Meteo · обновлено " + new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(weather.fetchedAt)), 10, Kit.MUTED, false);
+        TextView srcT = Kit.text(this, "Данные: " + weather.source + " · обновлено " + new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(weather.fetchedAt)), 10, Kit.MUTED, false);
         srcT.setPadding(dp(4), dp(8), 0, 0);
         col.addView(srcT);
         return s;
@@ -1283,12 +1360,12 @@ public class HomeActivity extends BaseActivity {
         if (!mv.isEmpty()) {
             col.addView(Kit.rowTitle(this, "Фильмы · " + mv.size(), "открой карточку, чтобы убрать", null));
             LinearLayout r = hrow(col);
-            for (Program p : mv) r.addView(posterTile(p, 136, 86), lpH(136, 86));
+            for (Program p : mv) r.addView(tile(p));
         }
         if (!sr.isEmpty()) {
             col.addView(Kit.rowTitle(this, "Сериалы · " + sr.size(), null, null));
             LinearLayout r = hrow(col);
-            for (Program p : sr) r.addView(posterTile(p, 136, 86), lpH(136, 86));
+            for (Program p : sr) r.addView(tile(p));
         }
         List<App> fa = favApps();
         col.addView(Kit.rowTitle(this, "Приложения · " + fa.size(), "удерживай OK — убрать", null));
@@ -1328,8 +1405,9 @@ public class HomeActivity extends BaseActivity {
 
     // ================================================================== действия
 
-    /** Открыть фильм в приложении, которое его опубликовало. */
+    /** Открыть фильм в приложении, которое его опубликовало (или выбрать, где смотреть). */
     private void open(Program p) {
+        if (p.pkg.isEmpty()) { Watch.choose(this, p); return; }
         Intent i = null;
         try { if (!p.intent.isEmpty()) i = Intent.parseUri(p.intent, Intent.URI_INTENT_SCHEME); } catch (Throwable ignored) { }
         if (i == null) {
