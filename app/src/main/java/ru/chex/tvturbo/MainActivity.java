@@ -62,44 +62,50 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
 
     private View tile(LinearLayout row, String icon, String title, String sub, int c1, int c2, Runnable click) {
         LinearLayout t = new LinearLayout(this);
-        t.setOrientation(LinearLayout.VERTICAL);
+        t.setOrientation(LinearLayout.HORIZONTAL);
         t.setGravity(Gravity.CENTER_VERTICAL);
         t.setBackgroundResource(R.drawable.tile_bg);
         t.setFocusable(true);
         t.setClickable(true);
-        int p = Ui.dp(this, 20);
-        t.setPadding(p, p, p, p);
+        int p = Ui.dp(this, 18);
+        t.setPadding(p, Ui.dp(this, 12), p, Ui.dp(this, 12));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
         if (row.getChildCount() > 0) lp.setMarginStart(Ui.dp(this, 14));
         t.setLayoutParams(lp);
 
         TextView ic = new TextView(this);
         ic.setText(icon);
-        ic.setTextSize(26);
+        ic.setTextSize(24);
         ic.setGravity(Gravity.CENTER);
         GradientDrawable circle = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{c1, c2});
         circle.setShape(GradientDrawable.OVAL);
         ic.setBackground(circle);
-        int s = Ui.dp(this, 56);
+        int s = Ui.dp(this, 54);
         t.addView(ic, new LinearLayout.LayoutParams(s, s));
+
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
+        clp.setMarginStart(Ui.dp(this, 16));
+        t.addView(col, clp);
 
         TextView tt = new TextView(this);
         tt.setText(title);
-        tt.setTextSize(21);
+        tt.setTextSize(20);
         tt.setTextColor(0xFFECEFF4);
         tt.setTypeface(tt.getTypeface(), android.graphics.Typeface.BOLD);
-        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        tlp.topMargin = Ui.dp(this, 12);
-        t.addView(tt, tlp);
+        tt.setSingleLine(true);
+        col.addView(tt);
 
         TextView st = new TextView(this);
         st.setText(sub);
         st.setTextSize(13);
         st.setTextColor(0xFF8A93A6);
-        t.addView(st);
+        st.setMaxLines(2);
+        col.addView(st);
 
         t.setOnClickListener(v -> click.run());
-        zoomOnFocus(t, 1.06f);
+        zoomOnFocus(t, 1.05f);
         row.addView(t);
         return t;
     }
