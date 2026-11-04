@@ -1,22 +1,6 @@
 {
-  "version": 3,
+  "version": 4,
   "apps": [
-    {
-      "group": "YouTube в России",
-      "name": "ByeByeDPI",
-      "pkg": "io.github.romanvht.byedpi",
-      "desc": "Обход замедления YouTube прямо на ТВ, без чужих серверов. Открой → «Подключить» → подтверди VPN. Открытый код.",
-      "github": "romanvht/ByeByeDPI"
-    },
-    {
-      "group": "YouTube в России",
-      "name": "SmartTube",
-      "pkg": "com.teamsmart.videomanager.tv",
-      "desc": "YouTube для ТВ без рекламы, со SponsorBlock и выбором качества. Открытый код.",
-      "github": "yuliskov/SmartTube",
-      "tag": "latest",
-      "asset": "stable"
-    },
     {
       "group": "Магазины",
       "name": "RuStore для ТВ",

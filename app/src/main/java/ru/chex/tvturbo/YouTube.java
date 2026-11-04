@@ -9,17 +9,18 @@ import java.io.OutputStream;
 import java.util.Map;
 
 /**
- * YouTube в России «под ключ»: ставит ByeByeDPI (обход замедления на самом ТВ) и SmartTube,
- * сам выдаёт разрешение VPN (без окна), включает обход и делает его постоянным —
- * он поднимается сам после каждой перезагрузки. Работает для всех приложений, включая обычный YouTube.
+ * YouTube в России «под ключ»: ставит «ТВ Турбо Обход» (ByeByeDPI с белым списком — обход работает
+ * ТОЛЬКО для YouTube, остальные приложения ходят в интернет напрямую и VPN не видят),
+ * сам выдаёт разрешение VPN (без окна), включает обход и делает его постоянным.
  */
 public final class YouTube {
 
-    public static final String DPI_PKG = "io.github.romanvht.byedpi";
-    public static final String DPI_REPO = "romanvht/ByeByeDPI";
-    public static final String TUBE_PKG = "com.teamsmart.videomanager.tv";
-    public static final String TUBE_REPO = "yuliskov/SmartTube";
-    private static final String TOGGLE = DPI_PKG + "/.activities.ToggleActivity";
+    public static final String DPI_PKG = "ru.chex.tvturbo.dpi";
+    public static final String DPI_URL = "https://github.com/" + Updater.REPO + "/releases/download/latest/TvTurboDPI.apk";
+    /** Официальный ByeByeDPI пускает через VPN весь ТВ — заменяем его своим. */
+    public static final String OLD_DPI_PKG = "io.github.romanvht.byedpi";
+    public static final String YOUTUBE_PKG = "com.google.android.youtube.tv";
+    private static final String TOGGLE = DPI_PKG + "/io.github.romanvht.byedpi.activities.ToggleActivity";
 
     /** Стратегии обхода: первая — стандартная ByeByeDPI, дальше — из его же списка тестов. */
     public static final String[] STRATEGIES = {
@@ -41,25 +42,26 @@ public final class YouTube {
         return m.containsKey(pkg) && m.get(pkg).installed && m.get(pkg).enabled;
     }
 
-    /** Полная настройка. Шаги: 0 ByeByeDPI, 1 SmartTube, 2 разрешение VPN, 3 запуск, 4 автозапуск. Только в потоке Adb. */
+    /** Полная настройка. Шаги: 0 обход, 1 убрать старый ByeByeDPI, 2 разрешения, 3 запуск, 4 автозапуск. Только в потоке Adb. */
     public static boolean setup(Context c, Adb adb, Step st) {
         boolean ok = true;
 
-        // 0. ByeByeDPI
+        // 0. «ТВ Турбо Обход»
         if (installed(c, DPI_PKG)) st.on(0, "ok", "уже установлен");
         else {
-            String r = install(c, adb, "ByeByeDPI", DPI_REPO, "", "", t -> st.on(0, "run", t));
+            String r = installUrl(c, adb, "ТВ Турбо Обход", DPI_URL, t -> st.on(0, "run", t));
             if (r != null) { st.on(0, "bad", r); return false; }
             st.on(0, "ok", "установлен");
         }
 
-        // 1. SmartTube
-        if (installed(c, TUBE_PKG)) st.on(1, "ok", "уже установлен");
-        else {
-            String r = install(c, adb, "SmartTube", TUBE_REPO, "stable", "latest", t -> st.on(1, "run", t));
-            if (r != null) { st.on(1, "warn", r); ok = false; }
-            else st.on(1, "ok", "установлен");
-        }
+        // 1. официальный ByeByeDPI включал VPN на весь ТВ — удалить
+        Map<String, Pkgs.P> m = Pkgs.map(c);
+        if (m.containsKey(OLD_DPI_PKG) && m.get(OLD_DPI_PKG).installed) {
+            st.on(1, "run", "удаляю");
+            adb.execSync("settings put secure always_on_vpn_app ''", false);
+            adb.execSync("am force-stop " + OLD_DPI_PKG + "; pm uninstall " + OLD_DPI_PKG, true);
+            st.on(1, "ok", "удалён — VPN больше не на весь ТВ");
+        } else st.on(1, "ok", "не нужно");
 
         // 2. разрешение VPN без окна подтверждения
         st.on(2, "run", "");
@@ -69,7 +71,7 @@ public final class YouTube {
         // 3. запуск с текущей стратегией
         st.on(3, "run", "");
         boolean started = start(c, adb, strategy(c));
-        st.on(3, started ? "ok" : "warn", started ? "обход работает" : "открой ByeByeDPI и нажми «Подключить»");
+        st.on(3, started ? "ok" : "warn", started ? "обход работает только для YouTube" : "не запустился — нажми «Настроить всё» ещё раз");
         if (!started) ok = false;
 
         // 4. постоянный VPN — обход поднимается сам после перезагрузки
@@ -140,12 +142,10 @@ public final class YouTube {
 
     interface Progress { void on(String t); }
 
-    /** Скачать последний релиз с GitHub и установить. null = успех, иначе текст ошибки. */
-    static String install(Context c, Adb adb, String name, String repo, String asset, String tag, Progress pr) {
-        File f = new File(c.getCacheDir(), "yt_" + name + ".apk");
+    /** Скачать APK по ссылке и установить. null = успех, иначе текст ошибки. */
+    static String installUrl(Context c, Adb adb, String name, String url, Progress pr) {
+        File f = new File(c.getCacheDir(), "dpi.apk");
         try {
-            pr.on("ищу последнюю версию");
-            String url = InstallActivity.latestGithubApk(repo, asset, tag);
             byte[] data = InstallActivity.download(url, p -> pr.on("скачиваю " + p + "%"));
             try (OutputStream o = new FileOutputStream(f)) { o.write(data); }
         } catch (Throwable t) { return "не скачался: " + t.getMessage(); }

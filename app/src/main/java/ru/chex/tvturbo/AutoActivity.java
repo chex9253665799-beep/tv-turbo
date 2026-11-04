@@ -26,7 +26,7 @@ public class AutoActivity extends ListScreen {
             "Выдать все разрешения, выключить заставку и фоновый поиск",
             "Скачать красивый лаунчер без рекламы",  // имя лаунчера подставляется в onResume
             "Сделать его главным экраном",
-            "Настроить YouTube: обход замедления + SmartTube",
+            "Настроить YouTube: обход только для YouTube",
             "Очистить кэш и освободить память",
             "Включить Стража — следит за ТВ и чинит сам"
     };
@@ -151,7 +151,7 @@ public class AutoActivity extends ListScreen {
             // 7. YouTube
             mark(6, "⏳", "", 0, null);
             boolean yt = YouTube.setup(this, adb, (st, state, text) ->
-                    mark(6, "⏳", (st == 0 ? "ByeByeDPI: " : st == 1 ? "SmartTube: " : "") + (text.length() > 30 ? text.substring(0, 30) : text), 0xFF8A93A6, null));
+                    mark(6, "⏳", (st == 0 ? "обход: " : "") + (text.length() > 30 ? text.substring(0, 30) : text), 0xFF8A93A6, null));
             if (yt) { mark(6, "✔", "YouTube работает", 0xFF3DDC84, null); done++; }
             else mark(6, "⚠", "частично — открой «YouTube»", 0xFFFFB020, null);
 

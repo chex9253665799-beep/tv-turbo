@@ -6,8 +6,8 @@ import android.widget.Button;
 public class YouTubeActivity extends ListScreen {
 
     private static final String[] STEPS = {
-            "Установить ByeByeDPI — обход замедления",
-            "Установить SmartTube — YouTube без рекламы",
+            "Установить «ТВ Турбо Обход» — только для YouTube",
+            "Убрать старый обход на весь ТВ (если был)",
             "Выдать разрешение VPN (без окон)",
             "Включить обход",
             "Включать обход сам после перезагрузки"
@@ -19,12 +19,12 @@ public class YouTubeActivity extends ListScreen {
     @Override
     protected void setup() {
         title.setText("▶ YouTube в России");
-        hint.setText("Всё настроится само: обход работает в фоне постоянно, поэтому и обычный YouTube, и SmartTube "
-                + "открываются сразу и быстро. Трафик никуда не уходит — обход работает на самом ТВ.");
+        hint.setText("Обход работает ТОЛЬКО для YouTube — банки, Кинопоиск, Wink и другие российские приложения "
+                + "идут напрямую и VPN не видят. Обход включается сам, в том числе после перезагрузки ТВ.");
         Ui.action(this, actions, "▶  Настроить всё", v -> runSetup());
         nextBtn = Ui.action(this, actions, "", v -> nextStrategy());
-        Ui.action(this, actions, "📺  Открыть SmartTube", v -> adb.run(
-                "monkey -p " + YouTube.TUBE_PKG + " -c android.intent.category.LEANBACK_LAUNCHER 1", null));
+        Ui.action(this, actions, "📺  Открыть YouTube", v -> adb.run(
+                "monkey -p " + YouTube.YOUTUBE_PKG + " -c android.intent.category.LEANBACK_LAUNCHER 1", null));
         Ui.action(this, actions, "⏹  Выключить обход", v -> Ui.confirm(this, "Выключить обход?",
                 "YouTube снова будет тормозить.", () -> adb.background(() -> {
                     YouTube.stop(this, adb);
@@ -72,7 +72,7 @@ public class YouTubeActivity extends ListScreen {
             boolean ok = YouTube.setup(this, adb, this::mark);
             adb.ui(() -> {
                 busy = false;
-                hint.setText(ok ? "✔ Готово! Открывай YouTube или SmartTube. Если видео всё равно тормозит — нажми «Другая стратегия»."
+                hint.setText(ok ? "✔ Готово! Открывай YouTube. Если видео всё равно тормозит — нажми «Другая стратегия»."
                         : "Готово с замечаниями — смотри пункты с ⚠/✖.");
             });
         });
@@ -90,7 +90,7 @@ public class YouTubeActivity extends ListScreen {
                 busy = false;
                 updateNext();
                 hint.setText(ok ? "✔ Стратегия " + (next + 1) + " включена. Проверь видео в YouTube; если тормозит — нажми ещё раз."
-                        : "⚠ Обход не запустился — открой ByeByeDPI и нажми «Подключить».");
+                        : "⚠ Обход не запустился — нажми «Настроить всё».");
             });
         });
     }

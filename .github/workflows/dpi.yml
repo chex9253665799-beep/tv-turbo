@@ -1,0 +1,59 @@
+name: Сборка обхода YouTube
+
+# «ТВ Турбо Обход» — ByeByeDPI с белым списком: обход работает только для YouTube.
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'dpi/**', '.github/workflows/dpi.yml' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  BYEDPI_TAG: v.1.8.2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Исходники ByeByeDPI
+        uses: actions/checkout@v4
+        with:
+          repository: romanvht/ByeByeDPI
+          ref: ${{ env.BYEDPI_TAG }}
+          path: byedpi
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Патч — только YouTube
+        run: python3 dpi/patch.py byedpi
+
+      - name: Собрать
+        working-directory: byedpi
+        run: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Подписать ключом ТВ Турбо
+        run: |
+          BT=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | sort -V | tail -1)
+          APK=$(find byedpi/app/build/outputs/apk/release -name '*.apk' | head -1)
+          echo "APK: $APK"
+          $BT/zipalign -f -p 4 "$APK" aligned.apk
+          $BT/apksigner sign --ks app/tvturbo.keystore --ks-pass pass:tvturbo --ks-key-alias tvturbo --key-pass pass:tvturbo --out TvTurboDPI.apk aligned.apk
+          $BT/apksigner verify TvTurboDPI.apk
+          ls -la TvTurboDPI.apk
+
+      - name: Выложить в релиз «latest»
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          files: TvTurboDPI.apk

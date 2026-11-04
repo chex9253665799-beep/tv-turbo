@@ -110,6 +110,10 @@ public final class Guard {
         }
 
         // 6. обход YouTube
+        // переход со старого ByeByeDPI (VPN на весь ТВ) на «ТВ Турбо Обход» (только YouTube) — сам
+        if (Profile.youtube(c) && !YouTube.installed(c, YouTube.DPI_PKG)) {
+            if (YouTube.setup(c, adb, (st, state, text) -> { })) { fixed++; note(what, "обход теперь только для YouTube"); }
+        }
         if (Profile.youtube(c) && YouTube.installed(c, YouTube.DPI_PKG)) YouTube.grant(adb);
         if (Profile.youtube(c) && YouTube.installed(c, YouTube.DPI_PKG) && !YouTube.isRunning(adb)) {
             if (YouTube.start(c, adb, YouTube.strategy(c))) { fixed++; note(what, "обход YouTube включён"); }
@@ -147,7 +151,8 @@ public final class Guard {
             if (a.equals("0.5") || a.equals("0.0") || a.equals("0")) e.putString("anim", a);
         }
         if (Profile.dns(c) == null && "hostname".equals(adb.execSync("settings get global private_dns_mode", false).out.trim())) e.putString("dns", "on");
-        if (YouTube.installed(c, YouTube.DPI_PKG) && adb.execSync("settings get secure always_on_vpn_app", false).out.contains(YouTube.DPI_PKG)) e.putBoolean("youtube", true);
+        String aon = adb.execSync("settings get secure always_on_vpn_app", false).out;
+        if (aon.contains(YouTube.DPI_PKG) || aon.contains(YouTube.OLD_DPI_PKG)) e.putBoolean("youtube", true);
         e.apply();
         sp(c).edit().putBoolean("seeded", true).apply();
     }
