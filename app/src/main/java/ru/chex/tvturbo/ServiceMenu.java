@@ -125,7 +125,9 @@ public final class ServiceMenu {
             for (int i = 0; i < 6 && m.pkg.equals(Launchers.foreground(adb)); i++) { adb.execSync("input keyevent 4", false); sleep(700); }
             adb.execSync("am force-stop " + m.pkg, false);
         }
-        if (g.lines.isEmpty() && g.shot == null) g.error = "Меню открылось, но прочитать его не удалось — оно рисуется поверх Android. Открой его комбинацией на пульте и сфотографируй.";
+        if (g.lines.isEmpty() && g.shot == null) g.error = "Меню открылось, но прочитать его не удалось."
+                + (lastDumpError.isEmpty() ? "" : "\nОтвет системы: " + lastDumpError)
+                + "\nПопробуй ещё раз — иногда меню дорисовывается дольше обычного.";
         save(c, g);
         return g;
     }
@@ -150,7 +152,7 @@ public final class ServiceMenu {
 
     /** Где сейчас фокус: самый маленький сфокусированный прямоугольник {x1,y1,x2,y2} или null. */
     private static int[] focus(Adb adb) {
-        String xml = adb.readText("uiautomator dump /data/local/tmp/tvt_ui.xml >/dev/null 2>&1; cat /data/local/tmp/tvt_ui.xml; rm -f /data/local/tmp/tvt_ui.xml");
+        String xml = dump(adb);
         Matcher m = FOCUS.matcher(xml);
         int[] best = null;
         while (m.find()) {
@@ -176,9 +178,24 @@ public final class ServiceMenu {
         return false;
     }
 
+    /** Последний ответ системы, если экран не прочитался (для диагностики). */
+    static String lastDumpError = "";
+
+    /** XML экрана; uiautomator иногда отвечает «could not get idle state», пока меню дорисовывается — повторяем. */
+    private static String dump(Adb adb) {
+        String out = "";
+        for (int i = 0; i < 4; i++) {
+            out = adb.readText("uiautomator dump /data/local/tmp/tvt_ui.xml 2>&1; cat /data/local/tmp/tvt_ui.xml 2>/dev/null; rm -f /data/local/tmp/tvt_ui.xml");
+            if (out.contains("<node")) { lastDumpError = ""; return out; }
+            lastDumpError = out.trim().length() > 200 ? out.trim().substring(0, 200) : out.trim();
+            sleep(1500);
+        }
+        return out;
+    }
+
     private static Page read(Adb adb) {
         Page p = new Page();
-        String xml = adb.readText("uiautomator dump /data/local/tmp/tvt_ui.xml >/dev/null 2>&1; cat /data/local/tmp/tvt_ui.xml; rm -f /data/local/tmp/tvt_ui.xml");
+        String xml = dump(adb);
         Matcher m = NODE.matcher(xml);
         while (m.find()) {
             String t = unescape(m.group(1)).trim();
@@ -190,12 +207,14 @@ public final class ServiceMenu {
             p.nodes.add(n);
             p.lines.add(t);
         }
-        byte[] png = adb.readBytes("screencap -p");
-        if (png != null && png.length > 1000) {
+        // снимок: сначала в файл, потом прочитать (поток напрямую на части ТВ обрывается)
+        byte[] png = adb.readBytes("screencap -p /data/local/tmp/tvt_shot.png >/dev/null 2>&1; cat /data/local/tmp/tvt_shot.png; rm -f /data/local/tmp/tvt_shot.png");
+        if (png == null || png.length < 1000) png = adb.readBytes("screencap -p");
+        if (png != null && png.length > 1000) try {
             BitmapFactory.Options o = new BitmapFactory.Options();
             o.inSampleSize = 2;
             p.shot = BitmapFactory.decodeByteArray(png, 0, png.length, o);
-        }
+        } catch (Throwable ignored) { }
         return p;
     }
 
