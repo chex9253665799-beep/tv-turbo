@@ -135,8 +135,27 @@ public final class Guard {
             if (YouTube.setup(c, adb, (st, state, text) -> { })) { fixed++; note(what, "обход теперь только для YouTube"); }
         }
         if (Profile.youtube(c) && YouTube.installed(c, YouTube.DPI_PKG)) YouTube.grant(adb);
-        if (Profile.youtube(c) && YouTube.installed(c, YouTube.DPI_PKG) && !YouTube.isRunning(adb)) {
-            if (YouTube.start(c, adb, YouTube.strategy(c))) { fixed++; note(what, "обход YouTube включён"); }
+        if (Profile.youtube(c) && YouTube.installed(c, YouTube.DPI_PKG)) {
+            if (boot) {
+                // после включения ТВ Android поднимает туннель сам, но обход внутри может не стартовать — перезапуск
+                sleepMs(15_000);   // дать сети подняться
+                if (YouTube.start(c, adb, YouTube.strategy(c))) { fixed++; note(what, "обход YouTube перезапущен после включения"); }
+            } else if (!YouTube.isRunning(adb)) {
+                if (YouTube.start(c, adb, YouTube.strategy(c))) { fixed++; note(what, "обход YouTube включён"); }
+            }
+            // проверка по-настоящему: открывается ли YouTube через обход
+            if (YouTube.works() || !YouTube.internet()) sp(c).edit().putInt("ytFails", 0).apply();
+            else {
+                int fails = sp(c).getInt("ytFails", 0) + 1;
+                adb.logLine("🛡 Страж: обход поднят, но YouTube через него не открывается — перезапускаю");
+                int st = YouTube.strategy(c);
+                if (fails >= 2) { st = (st + 1) % YouTube.STRATEGIES.length; fails = 0; }   // два раза подряд — другая стратегия
+                sp(c).edit().putInt("ytFails", fails).apply();
+                if (YouTube.start(c, adb, st)) {
+                    fixed++;
+                    note(what, YouTube.works() ? "обход YouTube починен (стратегия " + (st + 1) + ")" : "обход перезапущен (стратегия " + (st + 1) + ")");
+                }
+            }
         }
 
         // 7. память: если свободно меньше 20% — закрыть фоновые и почистить кэш
@@ -176,6 +195,8 @@ public final class Guard {
         e.apply();
         sp(c).edit().putBoolean("seeded", true).apply();
     }
+
+    private static void sleepMs(long ms) { try { Thread.sleep(ms); } catch (InterruptedException ignored) { } }
 
     private static void note(StringBuilder sb, String s) {
         if (sb.indexOf(s) >= 0) return;

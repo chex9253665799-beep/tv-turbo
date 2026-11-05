@@ -135,6 +135,37 @@ public final class YouTube {
         return out.contains("ByeDpiVpnService") || out.contains("ByeDpiProxyService");
     }
 
+    /** Порт локального прокси ByeByeDPI (через него идёт трафик YouTube внутри туннеля). */
+    static final int PORT_DPI = 1080;
+
+    /** Есть ли интернет напрямую. */
+    public static boolean internet() { return fetch(null, "https://ya.ru/", 200) || fetch(null, "https://www.google.com/generate_204", 204); }
+
+    /**
+     * Работает ли обход по-настоящему: YouTube открывается через локальный прокси обхода.
+     * Туннель может быть поднят, а прокси внутри — нет (так бывает после перезагрузки ТВ).
+     */
+    public static boolean works() {
+        java.net.Proxy p = new java.net.Proxy(java.net.Proxy.Type.SOCKS, new java.net.InetSocketAddress("127.0.0.1", PORT_DPI));
+        return fetch(p, "https://www.youtube.com/generate_204", 204)
+                && fetch(p, "https://redirector.googlevideo.com/report_mapping?di=no", 200);
+    }
+
+    private static boolean fetch(java.net.Proxy proxy, String url, int want) {
+        java.net.HttpURLConnection h = null;
+        try {
+            java.net.URL u = new java.net.URL(url);
+            h = (java.net.HttpURLConnection) (proxy == null ? u.openConnection() : u.openConnection(proxy));
+            h.setConnectTimeout(8000);
+            h.setReadTimeout(8000);
+            h.setInstanceFollowRedirects(false);
+            int code = h.getResponseCode();
+            return code == want || (want == 200 && code >= 200 && code < 400);
+        } catch (Throwable t) {
+            return false;
+        } finally { if (h != null) h.disconnect(); }
+    }
+
     public static void stop(Context c, Adb adb) {
         adb.execSync("settings put secure always_on_vpn_app ''", true);
         adb.execSync("am start -n " + TOGGLE + " --ez only_stop true", true);
