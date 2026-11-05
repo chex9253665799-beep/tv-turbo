@@ -1,0 +1,58 @@
+name: CleanYourTV — лаунчер и списки
+
+# Проект CleanYourTV (github.com/Gathin23/cleanyourtv, лицензия MIT):
+#  - их лаунчер в стиле Apple TV собирается и подписывается ключом ТВ Турбо → CleanYourTV.apk;
+#  - индекс проверенных списков отключения по моделям ТВ → cyt-index.json.
+# Раз в неделю обновляется сам — у них постоянно добавляются модели.
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'cyt/**', '.github/workflows/cleanyourtv.yml' ]
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Исходники CleanYourTV
+        uses: actions/checkout@v4
+        with:
+          repository: Gathin23/cleanyourtv
+          path: cyt-src
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Индекс моделей
+        run: python3 cyt/index.py cyt-src > cyt-index.json
+
+      - name: Собрать лаунчер
+        working-directory: cyt-src/launcher
+        run: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --console=plain
+
+      - name: Подписать ключом ТВ Турбо
+        run: |
+          BT=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | sort -V | tail -1)
+          APK=cyt-src/launcher/app/build/outputs/apk/release/app-release.apk
+          $BT/zipalign -f -p 4 "$APK" aligned.apk
+          $BT/apksigner sign --ks app/tvturbo.keystore --ks-pass pass:tvturbo --ks-key-alias tvturbo --key-pass pass:tvturbo --out CleanYourTV.apk aligned.apk
+          $BT/apksigner verify CleanYourTV.apk
+          ls -la CleanYourTV.apk cyt-index.json
+
+      # только файлы: описание релиза (номер версии ТВ Турбо) не трогаем
+      - name: Выложить в релиз «latest»
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload latest CleanYourTV.apk cyt-index.json --clobber -R ${{ github.repository }}

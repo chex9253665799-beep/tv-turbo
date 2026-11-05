@@ -26,6 +26,13 @@ public final class Launchers {
             "Красивый минималистичный главный экран на основе FLauncher. Категории приложений, обои, часы, "
                 + "виджет трафика Wi-Fi, заставка для OLED. Без рекламы и рекомендаций.",
             "Красивый · категории · обои"),
+        new L("cyt", "CleanYourTV (стиль Apple TV)", "com.gathin.tvhome",
+            "release:CleanYourTV.apk", "",
+            "https://raw.githubusercontent.com/Gathin23/cleanyourtv/main/docs/focus-2-up-netflix.png",
+            "Чистый чёрный главный экран как у Apple TV: док из любимых приложений, сетка остальных, "
+                + "подсветка в цвет приложения, часы и заставка-часы, кнопка входов HDMI. Всего около 0,5 МБ. "
+                + "Открытый проект CleanYourTV (MIT), собран для ТВ Турбо. Нужен Android 8 и новее.",
+            "Как Apple TV · 0,5 МБ"),
         new L("light", "Lightweight TV Launcher", "com.tvlauncher",
             "wiiguy/lightweight_androidtv_launcher", "",
             "https://raw.githubusercontent.com/wiiguy/lightweight_androidtv_launcher/main/fastlane/metadata/android/en-US/images/tvScreenshots/01_home_screen.png",

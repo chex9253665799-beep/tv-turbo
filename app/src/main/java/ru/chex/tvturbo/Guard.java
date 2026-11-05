@@ -110,6 +110,12 @@ public final class Guard {
             }
         }
 
+        // 5а. кнопка MI не открывает PatchWall (совет CleanYourTV) — прошивка может вернуть настройку
+        if (Profile.patchwallOff(c) && "true".equals(adb.execSync("settings get global patchwall_enable", false).out.trim())) {
+            adb.execSync("settings put global patchwall_enable false", true);
+            fixed++; note(what, "кнопка MI без PatchWall");
+        }
+
         // 5б. PatchWall / стандартный лаунчер: отключить, а если уже на экране — уйти на свой
         {
             String fg = Launchers.foreground(adb);

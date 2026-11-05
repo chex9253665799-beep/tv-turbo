@@ -21,6 +21,7 @@ public final class Profile {
     public static String dns(Context c) { return sp(c).getString("dns", null); }          // "on" / "off" / null
     public static String home(Context c) { return sp(c).getString("home", null); }
     public static boolean saverOff(Context c) { return sp(c).getBoolean("saverOff", false); }
+    public static boolean patchwallOff(Context c) { return sp(c).getBoolean("patchwallOff", false); }
     public static boolean youtube(Context c) { return sp(c).getBoolean("youtube", false); }
     public static Set<String> disabled(Context c) { return new HashSet<>(sp(c).getStringSet("disabled", new HashSet<>())); }
     public static Set<String> noBg(Context c) { return new HashSet<>(sp(c).getStringSet("nobg", new HashSet<>())); }
@@ -43,6 +44,8 @@ public final class Profile {
         if (cmd.contains("private_dns_mode hostname")) e.putString("dns", "on");
         if (cmd.contains("private_dns_mode off")) e.putString("dns", "off");
         if (cmd.contains("screensaver_enabled 0")) e.putBoolean("saverOff", true);
+        if (cmd.contains("patchwall_enable false")) e.putBoolean("patchwallOff", true);
+        if (cmd.contains("patchwall_enable true")) e.putBoolean("patchwallOff", false);
         if (cmd.contains("screensaver_enabled 1")) e.putBoolean("saverOff", false);
         if (cmd.contains("always_on_vpn_app " + YouTube.DPI_PKG) || cmd.contains("always_on_vpn_app " + YouTube.OLD_DPI_PKG)) e.putBoolean("youtube", true);
         if (cmd.contains("always_on_vpn_app ''")) e.putBoolean("youtube", false);

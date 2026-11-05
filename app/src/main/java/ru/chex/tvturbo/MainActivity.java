@@ -53,6 +53,7 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
         LinearLayout bottom = findViewById(R.id.bottom);
         small(bottom, "🔌  Подключиться", this::connect).setOnLongClickListener(v -> { askTarget(); return true; });
         small(bottom, "💊  Доктор ТВ", () -> open(DoctorActivity.class));
+        small(bottom, "✨  CleanYourTV", () -> open(CytActivity.class));
         small(bottom, "🛡  Страж", this::guardDialog);
         small(bottom, "📜  Журнал", this::showLog);
         small(bottom, "🔍  Размер интерфейса", this::chooseScale);

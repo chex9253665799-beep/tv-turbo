@@ -173,7 +173,10 @@ public class LauncherActivity extends BaseActivity {
         File f = new File(c.getCacheDir(), "launcher.apk");
         try {
             String url;
-            if (l.repo.startsWith("fdroid:")) {
+            if (l.repo.startsWith("release:")) {
+                if (android.os.Build.VERSION.SDK_INT < 26) return "✖ " + l.name + " работает с Android 8 и новее, а на этом ТВ Android " + android.os.Build.VERSION.RELEASE + ".";
+                url = "https://github.com/" + Updater.REPO + "/releases/download/latest/" + l.repo.substring(8);
+            } else if (l.repo.startsWith("fdroid:")) {
                 String pkg = l.repo.substring(7);
                 org.json.JSONObject o = new org.json.JSONObject(new String(InstallActivity.download("https://f-droid.org/api/v1/packages/" + pkg), "UTF-8"));
                 url = "https://f-droid.org/repo/" + pkg + "_" + o.getLong("suggestedVersionCode") + ".apk";
