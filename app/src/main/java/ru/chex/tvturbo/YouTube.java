@@ -138,6 +138,15 @@ public final class YouTube {
     /** Порт локального прокси ByeByeDPI (через него идёт трафик YouTube внутри туннеля). */
     static final int PORT_DPI = 1080;
 
+    /**
+     * Работает ли обходчик внутри туннеля: его локальный прокси слушает 127.0.0.1:1080.
+     * После включения ТВ бывает «туннель есть, а прокси нет» — тогда YouTube не грузится. Только в потоке Adb.
+     */
+    public static boolean proxyUp(Adb adb) {
+        String t = adb.execSync("cat /proc/net/tcp /proc/net/tcp6 2>/dev/null", false).out;
+        return java.util.regex.Pattern.compile("(?i):0438\\s+0+:0000\\s+0A\\b").matcher(t).find();   // 0x0438 = 1080, 0A = LISTEN
+    }
+
     /** Есть ли интернет напрямую. */
     public static boolean internet() { return fetch(null, "https://ya.ru/", 200) || fetch(null, "https://www.google.com/generate_204", 204); }
 

@@ -143,17 +143,19 @@ public final class Guard {
             } else if (!YouTube.isRunning(adb)) {
                 if (YouTube.start(c, adb, YouTube.strategy(c))) { fixed++; note(what, "обход YouTube включён"); }
             }
-            // проверка по-настоящему: открывается ли YouTube через обход
-            if (YouTube.works() || !YouTube.internet()) sp(c).edit().putInt("ytFails", 0).apply();
-            else {
-                int fails = sp(c).getInt("ytFails", 0) + 1;
-                adb.logLine("🛡 Страж: обход поднят, но YouTube через него не открывается — перезапускаю");
-                int st = YouTube.strategy(c);
-                if (fails >= 2) { st = (st + 1) % YouTube.STRATEGIES.length; fails = 0; }   // два раза подряд — другая стратегия
-                sp(c).edit().putInt("ytFails", fails).apply();
-                if (YouTube.start(c, adb, st)) {
+            // проверка: работает ли обходчик внутри туннеля (туннель может быть поднят пустым)
+            if (!sp(c).getBoolean("noProxyCheck", false) && !YouTube.proxyUp(adb)) {
+                adb.logLine("🛡 Страж: туннель есть, а обходчик внутри не запущен — перезапускаю");
+                if (YouTube.start(c, adb, YouTube.strategy(c))) {
                     fixed++;
-                    note(what, YouTube.works() ? "обход YouTube починен (стратегия " + (st + 1) + ")" : "обход перезапущен (стратегия " + (st + 1) + ")");
+                    sleepMs(3000);
+                    if (YouTube.proxyUp(adb)) note(what, "обход YouTube починен");
+                    else {
+                        // сразу после запуска «не запущен» — значит, на этом ТВ проверка не годится; больше по ней не дёргаем
+                        sp(c).edit().putBoolean("noProxyCheck", true).apply();
+                        adb.logLine("🛡 Страж: проверка обходчика на этом ТВ не работает — отключаю её, перезапуск только при включении ТВ");
+                        note(what, "обход перезапущен");
+                    }
                 }
             }
         }
