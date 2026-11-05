@@ -12,10 +12,13 @@ public class BootReceiver extends BroadcastReceiver {
         if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(i.getAction())) {
             c.startActivity(new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             Guard.schedule(c);
+            WatchService.start(c);
             return;
         }
+        Adb.get(c).logLine("🔌 ТВ включился (сигнал загрузки) — Страж запустится через 20 секунд");
         if (!Guard.enabled(c)) return;
         Guard.schedule(c);
         Guard.runSoon(c, 20_000);
+        WatchService.start(c);
     }
 }

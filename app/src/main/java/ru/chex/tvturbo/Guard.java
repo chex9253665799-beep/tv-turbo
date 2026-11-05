@@ -27,7 +27,7 @@ public final class Guard {
 
     public static void setEnabled(Context c, boolean on) {
         sp(c).edit().putBoolean("on", on).apply();
-        if (on) schedule(c); else cancel(c);
+        if (on) { schedule(c); WatchService.start(c); } else { cancel(c); WatchService.stop(c); }
     }
 
     /** Периодическая проверка каждые 30 минут (переживает перезагрузку). */

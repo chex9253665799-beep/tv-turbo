@@ -60,7 +60,7 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
         small(bottom, "🔄  Обновления · v" + Updater.currentName(this), this::updatesDialog);
         small(bottom, "❓  Помощь", () -> Ui.info(this, "Как включить отладку", HELP));
 
-        if (Guard.enabled(this)) Guard.schedule(this);
+        if (Guard.enabled(this)) { Guard.schedule(this); WatchService.start(this); }
         auto.requestFocus();
         if (!adb.isConnected()) connect();
         else Updater.checkAndInstall(this, false, this::updateStatus);

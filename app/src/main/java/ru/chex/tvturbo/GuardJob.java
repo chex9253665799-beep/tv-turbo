@@ -14,6 +14,7 @@ public class GuardJob extends JobService {
     public boolean onStartJob(JobParameters params) {
         if (!Guard.enabled(this)) return false;
         boolean boot = params.getJobId() == Guard.JOB_NOW;
+        WatchService.start(this);   // сторож пробуждения должен быть запущен
         Adb.get(this).background(() -> {
             String result;
             try { result = Guard.check(this, boot); } catch (Throwable t) { result = "ошибка: " + t.getMessage(); }
