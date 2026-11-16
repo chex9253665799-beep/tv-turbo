@@ -171,6 +171,12 @@ public final class Guard {
             fixed++; note(what, "память освобождена (было " + freePct + "%)");
         }
 
+        // 8. закрыть приложения, которые висят в фоне и не открывались больше 30 минут
+        if (Idle.enabled(c) && !boot) {
+            java.util.List<String> idle = Idle.close(c, adb, 30 * 60 * 1000L);
+            if (!idle.isEmpty()) { fixed++; note(what, "закрыто неиспользуемых: " + idle.size()); }
+        }
+
         String result = fixed == 0 ? "всё в порядке" : "исправлено " + fixed + ": " + what;
         adb.logLine("🛡 Страж" + (boot ? " (включение ТВ)" : "") + ": " + result);
         save(c, result);

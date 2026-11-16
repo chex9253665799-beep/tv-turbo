@@ -182,7 +182,8 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
                 + "Что он охраняет:\n" + Profile.summary(this);
         new AlertDialog.Builder(this)
                 .setTitle("🛡 Страж — " + (on ? "включён" : "выключен"))
-                .setMessage(msg + "\n\nОткрывать ТВ Турбо при включении ТВ: " + (boot ? "да" : "нет"))
+                .setMessage(msg + "\n\nОткрывать ТВ Турбо при включении ТВ: " + (boot ? "да" : "нет")
+                        + "\nЗакрывать приложения, не открытые 30 мин: " + (Idle.enabled(this) ? "да" : "нет"))
                 .setPositiveButton("Проверить сейчас", (d, w) -> {
                     if (!Ui.needAdb(this)) return;
                     Ui.toast(this, "Проверяю…");
@@ -195,11 +196,23 @@ public class MainActivity extends BaseActivity implements Adb.Listener {
                     Guard.setEnabled(this, !on);
                     Ui.toast(this, !on ? "Страж включён" : "Страж выключен");
                 })
-                .setNegativeButton(boot ? "Не открывать при вкл." : "Открывать при вкл. ТВ", (d, w) -> {
-                    Guard.setOpenOnBoot(this, !boot);
-                    Ui.toast(this, !boot ? "Будет открываться при включении ТВ" : "Не будет открываться при включении");
-                })
+                .setNegativeButton("Настройки…", (d, w) -> guardSettings())
                 .show();
+    }
+
+    private void guardSettings() {
+        boolean boot = Guard.openOnBoot(this), idle = Idle.enabled(this);
+        String[] items = {
+                (idle ? "☑" : "☐") + "  Закрывать приложения, которые не открывали больше 30 минут (освобождает память)",
+                (boot ? "☑" : "☐") + "  Открывать ТВ Турбо при включении ТВ"
+        };
+        new AlertDialog.Builder(this).setTitle("🛡 Настройки Стража")
+                .setItems(items, (d, w) -> {
+                    if (w == 0) { Idle.setEnabled(this, !idle); Ui.toast(this, !idle ? "Страж будет закрывать неиспользуемые приложения" : "Не будет закрывать приложения"); }
+                    else { Guard.setOpenOnBoot(this, !boot); Ui.toast(this, !boot ? "Будет открываться при включении ТВ" : "Не будет открываться при включении"); }
+                    guardSettings();
+                })
+                .setNegativeButton("Готово", null).show();
     }
 
     private void updateStatus(String text) {
