@@ -33,7 +33,8 @@ jobs:
         run: gradle :app:assembleDebug :turbohome:assembleDebug --no-daemon
 
       - name: Переименовать
-        run: cp app/build/outputs/apk/debug/app-debug.apk TvTurbo.apk
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk TvTurbo.apk
           cp turbohome/build/outputs/apk/debug/turbohome-debug.apk TurboHome.apk
 
       - name: Сохранить как артефакт
@@ -77,3 +78,16 @@ jobs:
           prerelease: true
           make_latest: false
           files: TvTurbo.apk
+
+      - name: Опубликовать тестовый Turbo Home без изменения рабочего ТВ Турбо
+        if: github.ref == 'refs/heads/feature/turbo-home-launcher-v1'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: turbohome-preview
+          name: Turbo Home — тестовая версия (Android TV)
+          body: |
+            Экспериментальный APK. Не заменяет CleanYourTV и не является обновлением ТВ Турбо.
+            Сначала установи и открой Turbo Home из списка приложений, не выбирая его главным экраном.
+          prerelease: true
+          make_latest: false
+          files: TurboHome.apk
