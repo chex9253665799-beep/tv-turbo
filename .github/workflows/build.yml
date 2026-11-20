@@ -4,6 +4,8 @@ on:
   push:
     branches: [ main, mivision, feature/turbo-home-launcher-v1 ]
   workflow_dispatch:
+  pull_request:
+    branches: [ main ]
 
 permissions:
   contents: write
