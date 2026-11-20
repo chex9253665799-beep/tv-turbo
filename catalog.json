@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "apps": [
     {
       "group": "Магазины",
@@ -7,6 +7,76 @@
       "pkg": "",
       "desc": "Российский магазин приложений: Кинопоиск, Okko, Wink, IVI, VK Видео и др.",
       "url": "https://static.rustore.ru/release/RuStoreTV.apk"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "КИОН",
+      "pkg": "ru.mts.mtstv",
+      "desc": "Официальная страница приложения в RuStore. Для установки требуется совместимый Android TV.",
+      "page": "https://www.rustore.ru/catalog/app/ru.mts.mtstv"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "Wink",
+      "pkg": "ru.rt.video.app.tv",
+      "desc": "Официальная страница приложения в RuStore. Для установки требуется совместимый Android TV.",
+      "page": "https://www.rustore.ru/catalog/app/ru.rt.video.app.tv"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "Zona",
+      "pkg": "",
+      "desc": "Открыть сайт разработчика; проверьте совместимость и происхождение APK.",
+      "page": "https://android.zona.pub/"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "Иви",
+      "pkg": "ru.ivi.client",
+      "desc": "Официальная страница приложения в RuStore. Для установки требуется совместимый Android TV.",
+      "page": "https://www.rustore.ru/catalog/app/ru.ivi.client"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "Okko",
+      "pkg": "tv.okko.androidtv",
+      "desc": "Официальная страница приложения в RuStore. Для установки требуется совместимый Android TV.",
+      "page": "https://www.rustore.ru/catalog/app/tv.okko.androidtv"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "PREMIER",
+      "pkg": "one.premier.rustoretv",
+      "desc": "Официальная страница приложения в RuStore. Для установки требуется совместимый Android TV.",
+      "page": "https://www.rustore.ru/catalog/app/one.premier.rustoretv"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "START",
+      "pkg": "ru.start.androidtv",
+      "desc": "Официальная страница приложения в RuStore. Для установки требуется совместимый Android TV.",
+      "page": "https://www.rustore.ru/catalog/app/ru.start.androidtv"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "Кинопоиск",
+      "pkg": "ru.kinopoisk.tv",
+      "desc": "Официальная страница приложения в RuStore. Для установки требуется совместимый Android TV.",
+      "page": "https://www.rustore.ru/catalog/app/ru.kinopoisk.tv"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "Смотрим",
+      "pkg": "com.vgtrk.smotrim.tv",
+      "desc": "Официальная страница приложения в RuStore. Для установки требуется совместимый Android TV.",
+      "page": "https://www.rustore.ru/catalog/app/com.vgtrk.smotrim.tv"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "RUTUBE",
+      "pkg": "ru.rutube.app.tv",
+      "desc": "Официальная страница приложения в RuStore. Для установки требуется совместимый Android TV.",
+      "page": "https://www.rustore.ru/catalog/app/ru.rutube.app.tv"
     },
     {
       "group": "Полезное",

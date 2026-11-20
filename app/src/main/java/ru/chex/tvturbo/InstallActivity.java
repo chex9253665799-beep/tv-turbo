@@ -28,7 +28,7 @@ public class InstallActivity extends ListScreen {
     public static final String DEFAULT_CATALOG =
             "https://raw.githubusercontent.com/chex9253665799-beep/tv-turbo/main/catalog.json";
 
-    private static final class App { String name, pkg, desc, url, github, asset, tag, group; }
+    private static final class App { String name, pkg, desc, url, github, asset, tag, group, page; }
 
     @Override
     protected void setup() {
@@ -73,9 +73,9 @@ public class InstallActivity extends ListScreen {
                 App a = new App();
                 a.name = o.optString("name"); a.pkg = o.optString("pkg");
                 a.desc = o.optString("desc"); a.url = o.optString("url");
-                a.github = o.optString("github"); a.asset = o.optString("asset"); a.tag = o.optString("tag");
+                a.github = o.optString("github"); a.asset = o.optString("asset"); a.tag = o.optString("tag"); a.page = o.optString("page");
                 a.group = o.optString("group", "Приложения");
-                if (!a.url.isEmpty() || !a.github.isEmpty()) out.add(a);
+                if (!a.url.isEmpty() || !a.github.isEmpty() || !a.page.isEmpty()) out.add(a);
             }
         } catch (Throwable ignored) { }
         return out;
@@ -93,28 +93,36 @@ public class InstallActivity extends ListScreen {
                 adapter.rows.add(h);
             }
             Ui.Row r = new Ui.Row();
-            r.checkable = true;
+            r.checkable = a.page.isEmpty();
             boolean have = !a.pkg.isEmpty() && installed.containsKey(a.pkg) && installed.get(a.pkg).installed;
             r.name = a.name;
-            r.sub = a.desc;
+            r.sub = a.desc + (a.page.isEmpty() ? "" : " · Открыть официальный каталог");
             r.badge = have ? "установлено" : "";
             r.badgeColor = 0xFF3DDC84;
             r.tag = a;
             adapter.rows.add(r);
         }
         hint.setText("Каталог (" + src + "): " + apps.size() + " шт. Отметь нужные и нажми «Установить отмеченные».\n"
-                + "Список меняется в файле catalog.json в репозитории — пересобирать приложение не нужно.");
+                + "Кинотеатры открываются в официальном каталоге. Прямые APK помечены для установки.\nСписок обновляется из catalog.json.");
         adapter.notifyDataSetChanged();
         list.requestFocus();
     }
 
     @Override
-    protected void onRowClick(Ui.Row r, int pos) { if (r.checkable) toggle(r); }
+    protected void onRowClick(Ui.Row r, int pos) { if (r.checkable) toggle(r); else if (r.tag instanceof App) openStore((App) r.tag); }
+
+    private void openStore(App a) {
+        try {
+            startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(a.page)));
+        } catch (Exception ex) {
+            Ui.toast(this, "Не удалось открыть магазин: " + a.name);
+        }
+    }
 
     private void installChecked() {
         List<App> sel = new ArrayList<>();
         for (Ui.Row r : adapter.rows) if (r.checkable && r.checked) sel.add((App) r.tag);
-        if (sel.isEmpty()) { Ui.toast(this, "Ничего не отмечено"); return; }
+        if (sel.isEmpty()) { Ui.toast(this, "Отметь APK или открой страницу кинотеатра из каталога"); return; }
         installQueue(sel, 0, null);
     }
 
@@ -148,6 +156,13 @@ public class InstallActivity extends ListScreen {
                 return;
             }
             runOnUiThread(() -> {
+                hint.setText("Проверяю совместимость " + name + "…");
+                android.content.pm.PackageInfo apk = getPackageManager().getPackageArchiveInfo(f.getAbsolutePath(), 0);
+                if (apk == null) { hint.setText("✖ Файл не является допустимым APK: " + name); f.delete(); if (then != null) then.run(); return; }
+                if (android.os.Build.VERSION.SDK_INT >= 24 && apk.applicationInfo != null && apk.applicationInfo.minSdkVersion > android.os.Build.VERSION.SDK_INT) {
+                    hint.setText("✖ " + name + " требует Android " + apk.applicationInfo.minSdkVersion + ", на ТВ Android " + android.os.Build.VERSION.SDK_INT);
+                    f.delete(); if (then != null) then.run(); return;
+                }
                 hint.setText("Устанавливаю " + name + "…");
                 adb.install(f, (ok, out) -> {
                     f.delete();

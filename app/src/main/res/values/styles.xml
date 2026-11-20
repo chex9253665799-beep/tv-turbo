@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg">#0B0E14</color>
-    <color name="bg2">#141A2A</color>
-    <color name="stroke">#2A3245</color>
-    <color name="card">#161C28</color>
-    <color name="card_focus">#2E6BFF</color>
-    <color name="text">#ECEFF4</color>
-    <color name="muted">#8A93A6</color>
+    <color name="bg">#091225</color>
+    <color name="bg2">#111936</color>
+    <color name="stroke">#425687</color>
+    <color name="card">#19294D</color>
+    <color name="card_focus">#3B8DFF</color>
+    <color name="text">#F2F5FF</color>
+    <color name="muted">#A6B4D5</color>
     <color name="ok">#3DDC84</color>
     <color name="warn">#FFB020</color>
     <color name="bad">#FF5A5F</color>
