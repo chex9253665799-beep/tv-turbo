@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "apps": [
     {
       "group": "Магазины",
@@ -7,6 +7,76 @@
       "pkg": "",
       "desc": "Российский магазин приложений: Кинопоиск, Okko, Wink, IVI, VK Видео и др.",
       "url": "https://static.rustore.ru/release/RuStoreTV.apk"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "КИОН",
+      "pkg": "",
+      "desc": "Открыть официальный каталог и выбрать версию для Android TV.",
+      "page": "https://www.rustore.ru/catalog/search?query=%D0%9A%D0%98%D0%9E%D0%9D"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "Wink",
+      "pkg": "",
+      "desc": "Открыть официальный каталог и выбрать версию для Android TV.",
+      "page": "https://www.rustore.ru/catalog/search?query=Wink"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "Zona",
+      "pkg": "",
+      "desc": "Официальная страница приложения; совместимость с Android TV зависит от версии.",
+      "page": "https://android.zona.pub/"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "Иви",
+      "pkg": "",
+      "desc": "Открыть официальный каталог и выбрать версию для Android TV.",
+      "page": "https://www.rustore.ru/catalog/search?query=%D0%98%D0%B2%D0%B8"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "Okko",
+      "pkg": "",
+      "desc": "Открыть официальный каталог и выбрать версию для Android TV.",
+      "page": "https://www.rustore.ru/catalog/search?query=Okko"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "PREMIER",
+      "pkg": "",
+      "desc": "Открыть официальный каталог и выбрать версию для Android TV.",
+      "page": "https://www.rustore.ru/catalog/search?query=PREMIER"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "START",
+      "pkg": "",
+      "desc": "Открыть официальный каталог и выбрать версию для Android TV.",
+      "page": "https://www.rustore.ru/catalog/search?query=START"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "Кинопоиск",
+      "pkg": "",
+      "desc": "Открыть официальный каталог и выбрать версию для Android TV.",
+      "page": "https://www.rustore.ru/catalog/search?query=%D0%9A%D0%B8%D0%BD%D0%BE%D0%BF%D0%BE%D0%B8%D1%81%D0%BA"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "Смотрим",
+      "pkg": "",
+      "desc": "Открыть официальный каталог и выбрать версию для Android TV.",
+      "page": "https://www.rustore.ru/catalog/search?query=%D0%A1%D0%BC%D0%BE%D1%82%D1%80%D0%B8%D0%BC"
+    },
+    {
+      "group": "Российские кинотеатры и видео",
+      "name": "RUTUBE",
+      "pkg": "",
+      "desc": "Открыть официальный каталог и выбрать версию для Android TV.",
+      "page": "https://www.rustore.ru/catalog/search?query=RUTUBE"
     },
     {
       "group": "Полезное",
