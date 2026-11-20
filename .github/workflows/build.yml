@@ -2,7 +2,7 @@ name: Сборка APK
 
 on:
   push:
-    branches: [ main, mivision ]
+    branches: [ main, mivision, feature/turbo-home-launcher-v1 ]
   workflow_dispatch:
 
 permissions:
@@ -30,16 +30,19 @@ jobs:
           gradle-version: '8.9'
 
       - name: Собрать APK
-        run: gradle assembleDebug --no-daemon
+        run: gradle :app:assembleDebug :turbohome:assembleDebug --no-daemon
 
       - name: Переименовать
         run: cp app/build/outputs/apk/debug/app-debug.apk TvTurbo.apk
+          cp turbohome/build/outputs/apk/debug/turbohome-debug.apk TurboHome.apk
 
       - name: Сохранить как артефакт
         uses: actions/upload-artifact@v4
         with:
           name: TvTurbo
-          path: TvTurbo.apk
+          path: |
+            TvTurbo.apk
+            TurboHome.apk
 
       # сначала файл, потом номер версии — иначе ТВ успевает скачать старый файл под новым номером
       - name: Выложить файл в релиз «latest»
@@ -49,7 +52,9 @@ jobs:
           tag_name: latest
           prerelease: false
           make_latest: true
-          files: TvTurbo.apk
+          files: |
+            TvTurbo.apk
+            TurboHome.apk
 
       - name: Объявить новую версию
         if: github.ref == 'refs/heads/main'
