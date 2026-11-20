@@ -182,6 +182,7 @@ public class LauncherActivity extends BaseActivity {
 
     /** Скачать, установить и назначить главным. Возвращает итоговый текст. Только в потоке Adb. */
     static String installAndSetHome(android.content.Context c, Adb adb, Launchers.L l, Status st) {
+        if ("turbo".equals(l.id)) return "Turbo Home — тестовый лаунчер. Установи его через раздел Главный экран и сначала запусти вручную. Авто-режим не меняет твой текущий CleanYourTV.";
         if (Launchers.BUILTIN.equals(l.id)) {
             // встроенный — ставить не нужно, только назначить главным
             String comp = c.getPackageName() + "/" + HomeActivity.class.getName();
