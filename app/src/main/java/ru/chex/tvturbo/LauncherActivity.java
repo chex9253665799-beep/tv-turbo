@@ -125,6 +125,14 @@ public class LauncherActivity extends BaseActivity {
 
     private void installCurrent() {
         if (busy || !Ui.needAdb(this)) return;
+        if (current != null && "turbo".equals(current.id)) {
+            new android.app.AlertDialog.Builder(this)
+                .setTitle("Turbo Home — тестовая оболочка")
+                .setMessage("Сначала установим Turbo Home. Текущий CleanYourTV останется главным экраном. Проверить новую оболочку можно из списка приложений, затем выбрать её главным через кнопку Домой.")
+                .setPositiveButton("Установить для теста", (d,w) -> installTurboPreview())
+                .setNegativeButton("Отмена", null).show();
+            return;
+        }
         busy = true;
         Launchers.L l = current;
         Launchers.choose(this, l.id);
@@ -132,6 +140,26 @@ public class LauncherActivity extends BaseActivity {
         adb.background(() -> {
             String res = installAndSetHome(this, adb, l, t -> adb.ui(() -> hint.setText(t)));
             adb.ui(() -> { busy = false; hint.setText(res); Ui.toast(this, res); });
+        });
+    }
+
+    private void installTurboPreview() {
+        if (busy) return;
+        busy = true;
+        hint.setText("Скачиваю тестовую оболочку Turbo Home…");
+        adb.background(() -> {
+            String result;
+            java.io.File f = new java.io.File(getCacheDir(), "turbohome.apk");
+            try {
+                String url = "https://github.com/" + Updater.REPO + "/releases/download/latest/TurboHome.apk";
+                byte[] data = InstallActivity.download(url);
+                try (java.io.OutputStream o = new java.io.FileOutputStream(f)) { o.write(data); }
+                Adb.Result installed = adb.installSync(f);
+                result = installed.ok ? "✔ Turbo Home установлен. Открой его через список приложений и протестируй; CleanYourTV не изменён." : "✖ " + installed.out;
+            } catch (Exception ex) { result = "✖ " + ex.getMessage(); }
+            finally { f.delete(); }
+            final String text = result;
+            adb.ui(() -> { busy = false; hint.setText(text); Ui.toast(this,text); });
         });
     }
 
@@ -154,6 +182,7 @@ public class LauncherActivity extends BaseActivity {
 
     /** Скачать, установить и назначить главным. Возвращает итоговый текст. Только в потоке Adb. */
     static String installAndSetHome(android.content.Context c, Adb adb, Launchers.L l, Status st) {
+        if ("turbo".equals(l.id)) return "Turbo Home — тестовый лаунчер. Установи его через раздел Главный экран и сначала запусти вручную. Авто-режим не меняет твой текущий CleanYourTV.";
         if (Launchers.BUILTIN.equals(l.id)) {
             // встроенный — ставить не нужно, только назначить главным
             String comp = c.getPackageName() + "/" + HomeActivity.class.getName();

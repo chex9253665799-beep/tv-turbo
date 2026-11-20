@@ -19,44 +19,18 @@ public final class Launchers {
     /** Встроенный главный экран больше не предлагается (оставлено для совместимости). */
     public static final String BUILTIN = "home";
 
+    /** Only our launcher and the existing Apple-style fallback are offered. Other apps are not uninstalled. */
     public static final List<L> ALL = Arrays.asList(
-        new L("ltv", "LTvLauncher", "com.leanbitlab.ltvL",
-            "leanbitlab-org/LtvLauncher", "universal",
-            "https://raw.githubusercontent.com/leanbitlab-org/LtvLauncher/master/fastlane/metadata/android/en-US/images/tvScreenshots/screenshot_1.png",
-            "Красивый минималистичный главный экран на основе FLauncher. Категории приложений, обои, часы, "
-                + "виджет трафика Wi-Fi, заставка для OLED. Без рекламы и рекомендаций.",
-            "Красивый · категории · обои"),
-        new L("cyt", "CleanYourTV (стиль Apple TV)", "com.gathin.tvhome",
+        new L("cyt", "CleanYourTV (Apple TV)", "com.gathin.tvhome",
             "release:CleanYourTV.apk", "",
             "https://raw.githubusercontent.com/Gathin23/cleanyourtv/main/docs/focus-2-up-netflix.png",
-            "Чистый чёрный главный экран как у Apple TV: док из любимых приложений, сетка остальных, "
-                + "подсветка в цвет приложения, часы и заставка-часы, кнопка входов HDMI. Всего около 0,5 МБ. "
-                + "Открытый проект CleanYourTV (MIT), собран для ТВ Турбо. Нужен Android 8 и новее.",
-            "Как Apple TV · 0,5 МБ"),
-        new L("light", "Lightweight TV Launcher", "com.tvlauncher",
-            "wiiguy/lightweight_androidtv_launcher", "",
-            "https://raw.githubusercontent.com/wiiguy/lightweight_androidtv_launcher/main/fastlane/metadata/android/en-US/images/tvScreenshots/01_home_screen.png",
-            "Сверхлёгкий главный экран: занимает всего 30–40 МБ памяти. Тёмная тема, до 15 приложений на главном, "
-                + "поиск по приложениям, обои по желанию. Лучший выбор для слабых ТВ с 1–1.5 ГБ памяти.",
-            "Самый лёгкий · 30–40 МБ"),
-        new L("flauncher", "FLauncher", "me.efesser.flauncher",
-            "fdroid:me.efesser.flauncher", "", "",
-            "Знаменитый открытый лаунчер для Android TV: категории приложений, свои обои, часы, без рекламы. "
-                + "На нём основан LTvLauncher. Ставится из каталога F-Droid.",
-            "Классика · открытый код"),
-        new L("projectivy", "Projectivy Launcher", "com.spocky.projengmenu",
-            "play:com.spocky.projengmenu", "", "",
-            "Самый популярный сторонний лаунчер для Android TV: красивый, с превью каналов, обоями и гибкой настройкой. "
-                + "Бесплатный, ставится из Google Play (откроется его страница).",
-            "Самый популярный · Google Play"),
-        new L("atv", "ATV Launcher", "ca.dstudio.atvlauncher.free",
-            "play:ca.dstudio.atvlauncher.free", "", "",
-            "Простой и быстрый лаунчер с крупными плитками и группами. Бесплатный, ставится из Google Play.",
-            "Простой · Google Play"),
-        new L("wolf", "Wolf Launcher", "com.wolf.firelauncher",
-            "play:com.wolf.firelauncher", "", "",
-            "Лёгкий настраиваемый лаунчер: свои ряды, обои, скрытие приложений. Бесплатный, ставится из Google Play.",
-            "Настраиваемый · Google Play")
+            "Проверенный существующий главный экран в стиле Apple TV. Остаётся установленным.",
+            "Текущий главный экран · резервный"),
+        new L("turbo", "Turbo Home", "ru.chex.turbohome",
+            "release:TurboHome.apk", "",
+            "",
+            "Наш собственный лёгкий главный экран: приложения, избранное, динамический фон, темы и настройки. Без оптимизатора внутри оболочки.",
+            "Новый · тестовый")
     );
 
     /** Заводские Google-лаунчеры (без PatchWall). */
@@ -143,7 +117,7 @@ public final class Launchers {
     }
 
     public static L chosen(Context c) {
-        return byId(c.getSharedPreferences("launcher", Context.MODE_PRIVATE).getString("choice", "ltv"));
+        return byId(c.getSharedPreferences("launcher", Context.MODE_PRIVATE).getString("choice", "cyt"));
     }
 
     public static void choose(Context c, String id) {
