@@ -3,6 +3,9 @@ package ru.chex.turbohome;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.widget.SeekBar;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -111,7 +114,11 @@ public final class HomeActivity extends Activity {
     private void background(int accent) {
         activeColor = accent;
         int strength = low() ? 0 : prefs.getInt("glow", 60);
+        String wallpaper = prefs.getString("wallpaper", "waves");
+        if ("solid".equals(wallpaper)) strength = 0;
+        if ("soft".equals(wallpaper)) strength /= 2;
         int base = dark() ? 0xFF090E20 : 0xFFF2F3FA;
+        if ("graphite".equals(wallpaper)) base=dark()?0xFF12171E:0xFFF4F5F7;
         int other = dark() ? 0xFF16112D : 0xFFDADDED;
         int tinted = mix(other, accent, strength / 300f);
         root.setBackground(shape(base, tinted, 0, 0));
@@ -188,6 +195,7 @@ public final class HomeActivity extends Activity {
         prefs.edit().putString("favorites",b.toString()).apply();
     }
     private void build() {
+        cards.clear();
         root = vertical();
         root.setPadding(dp(32), dp(22), dp(32), dp(20));
         background(VIOLET);
@@ -195,11 +203,15 @@ public final class HomeActivity extends Activity {
         LinearLayout top = horizontal();
         TextView brand = text("◆  Turbo Home", 22, foreground(), true);
         top.addView(brand, new LinearLayout.LayoutParams(0, dp(44), 1));
+        TextView net = text(networkText(), 15, secondary(), false);
+        net.setPadding(dp(10),0,dp(16),0);
+        top.addView(net);
         TextView gear = button("⚙  Настройки", this::settings);
         top.addView(gear);
         root.addView(top);
         LinearLayout timeRow = horizontal();
         timeRow.setPadding(0, dp(26), 0, dp(30));
+        timeRow.setVisibility(prefs.getBoolean("clock",true)?View.VISIBLE:View.GONE);
         clock=text("", 58, foreground(), true);
         date=text("", 19, secondary(), false);
         date.setPadding(dp(22), 0, 0, 0);
@@ -252,7 +264,7 @@ public final class HomeActivity extends Activity {
     private void addFavoriteCards() {
         cards.clear();
         appBar.removeAllViews();
-        for (AppItem a: apps) if (favorites.contains(a.pkg)) addAppCard(appBar,a);
+        for (AppItem a: favoriteOrder()) addAppCard(appBar,a);
         if (cards.isEmpty()) addAppCard(appBar, apps.isEmpty()?null:apps.get(0));
     }
     private void addAppCard(LinearLayout bar, AppItem app) {
@@ -294,13 +306,7 @@ public final class HomeActivity extends Activity {
             }
         });
         card.setOnClickListener(v->launch(app));
-        card.setOnLongClickListener(v->{
-            favorites.remove(app.pkg);
-            saveFavorites();
-            addFavoriteCards();
-            Toast.makeText(this,"Убрано из избранного",Toast.LENGTH_SHORT).show();
-            return true;
-        });
+        card.setOnLongClickListener(v->{cardOptions(app);return true;});
         bar.addView(card);
         cards.put(app.pkg,card);
     }
@@ -343,7 +349,10 @@ public final class HomeActivity extends Activity {
           "Подсветка и анимация: "+onOff("motion",true),
           "Размер карточек: "+(prefs.getInt("large",0)+1),
           "Режим слабого ТВ: "+onOff("lite",false),
-          "Настроить избранное"};
+          "Настроить избранное",
+          "Фон: "+prefs.getString("wallpaper","waves"),
+          "Показывать часы: "+onOff("clock",true),
+          "Сбросить оформление"};
         new AlertDialog.Builder(this).setTitle("Turbo Home · Настройки")
           .setItems(options,(d,n)->{
              if(n==0) chooseTheme();
@@ -353,6 +362,9 @@ public final class HomeActivity extends Activity {
              if(n==4){prefs.edit().putInt("large",(prefs.getInt("large",0)+1)%3).apply();build();settings();}
              if(n==5) flip("lite",false);
              if(n==6) editFavorites();
+             if(n==7) chooseWallpaper();
+             if(n==8) flip("clock",true);
+             if(n==9) resetAppearance();
           }).setNegativeButton("Готово",null).show();
     }
     private String onOff(String key,boolean def){return prefs.getBoolean(key,def)?"вкл":"выкл";}
@@ -367,10 +379,82 @@ public final class HomeActivity extends Activity {
             prefs.edit().putString("theme",keys[n]).apply();build();settings();
         }).show();
     }
+
     private void chooseGlow(){
-        String[] labels={"Без свечения","Слабое · 25%","Среднее · 50%","Яркое · 75%","Максимум · 100%"};
-        int[] values={0,25,50,75,100};
+        SeekBar seek=new SeekBar(this);
+        seek.setMax(100);
+        seek.setProgress(prefs.getInt("glow",60));
+        seek.setPadding(dp(22),dp(16),dp(22),dp(8));
         new AlertDialog.Builder(this).setTitle("Яркость фонового эффекта")
-          .setItems(labels,(d,n)->{prefs.edit().putInt("glow",values[n]).apply();build();settings();}).show();
+           .setView(seek).setPositiveButton("Применить",(d,n)->{
+                prefs.edit().putInt("glow",seek.getProgress()).apply();
+                build();settings();
+           }).setNegativeButton("Отмена",null).show();
     }
+
+    private List<AppItem> favoriteOrder() {
+        List<AppItem> order=new ArrayList<>();
+        Set<String> remain=new HashSet<>(favorites);
+        String saved=prefs.getString("order","");
+        if(!saved.isEmpty()) for(String pkg:saved.split(",")){
+            if(!remain.remove(pkg))continue;
+            for(AppItem a:apps) if(a.pkg.equals(pkg)){order.add(a);break;}
+        }
+        for(AppItem a:apps)if(remain.contains(a.pkg))order.add(a);
+        return order;
+    }
+    private void moveCard(String pkg,int dir){
+        List<AppItem> order=favoriteOrder();
+        int index=-1;
+        for(int i=0;i<order.size();i++)if(order.get(i).pkg.equals(pkg))index=i;
+        int dest=index+dir;
+        if(index<0||dest<0||dest>=order.size())return;
+        Collections.swap(order,index,dest);
+        StringBuilder save=new StringBuilder();
+        for(AppItem a:order){if(save.length()>0)save.append(',');save.append(a.pkg);}
+        prefs.edit().putString("order",save.toString()).apply();
+        build();
+    }
+    private void cardOptions(AppItem app){
+        String[] choices={"Открыть","Переместить влево","Переместить вправо","Убрать из избранного"};
+        new AlertDialog.Builder(this).setTitle(app.title).setItems(choices,(d,n)->{
+            if(n==0)launch(app);
+            if(n==1)moveCard(app.pkg,-1);
+            if(n==2)moveCard(app.pkg,1);
+            if(n==3){favorites.remove(app.pkg);saveFavorites();build();}
+        }).setNegativeButton("Закрыть",null).show();
+    }
+    private String networkText(){
+        try{
+            ConnectivityManager cm=(ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
+            NetworkInfo info=cm==null?null:cm.getActiveNetworkInfo();
+            return info!=null&&info.isConnected()?"● Интернет":"○ Нет сети";
+        }catch(Exception ignored){return "";}
+    }
+    private void chooseWallpaper(){
+        String[] names={"Динамические волны","Мягкий градиент","Однотонный","Графитовый"};
+        String[] values={"waves","soft","solid","graphite"};
+        new AlertDialog.Builder(this).setTitle("Фон").setItems(names,(d,n)->{
+            prefs.edit().putString("wallpaper",values[n]).apply();
+            build();settings();
+        }).show();
+    }
+    private void resetAppearance(){
+        new AlertDialog.Builder(this).setTitle("Сброс оформления")
+            .setMessage("Вернуть оформление по умолчанию? Избранное сохранится.")
+            .setPositiveButton("Сбросить",(d,n)->{
+                SharedPreferences.Editor e=prefs.edit();
+                for(String key:new String[]{"theme","dynamic","glow","motion","large","lite","wallpaper","clock"})e.remove(key);
+                e.apply();build();
+            }).setNegativeButton("Отмена",null).show();
+    }
+    @Override public void onBackPressed(){
+        new AlertDialog.Builder(this).setTitle("Turbo Home")
+          .setItems(new String[]{"Все приложения","Настройки оболочки","Настройки Android"},(d,n)->{
+              if(n==0)allApps();
+              if(n==1)settings();
+              if(n==2)startActivity(new Intent(Settings.ACTION_SETTINGS));
+          }).setNegativeButton("Закрыть",null).show();
+    }
+
 }
