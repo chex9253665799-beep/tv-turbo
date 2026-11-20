@@ -184,7 +184,7 @@ public final class HomeActivity extends Activity {
         String saved = prefs.getString("favorites", "");
         favorites.clear();
         if (!saved.isEmpty()) for (String pkg : saved.split(",")) favorites.add(pkg);
-        if (saved.isEmpty()) {
+        if (!prefs.getBoolean("favoritesInitialized", false)) {
             int count=0;
             for (AppItem app: apps) {
                 if (count++ >= 6) break;
@@ -198,7 +198,7 @@ public final class HomeActivity extends Activity {
             if (b.length()>0) b.append(',');
             b.append(a.pkg);
         }
-        prefs.edit().putString("favorites",b.toString()).apply();
+        prefs.edit().putString("favorites",b.toString()).putBoolean("favoritesInitialized",true).apply();
     }
     private void build() {
         cards.clear();
@@ -271,7 +271,7 @@ public final class HomeActivity extends Activity {
         cards.clear();
         appBar.removeAllViews();
         for (AppItem a: favoriteOrder()) addAppCard(appBar,a);
-        if (cards.isEmpty()) addAppCard(appBar, apps.isEmpty()?null:apps.get(0));
+        if (cards.isEmpty()) addAppCard(appBar, null);
     }
     private void addAppCard(LinearLayout bar, AppItem app) {
         if (app==null) {
