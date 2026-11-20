@@ -41,6 +41,7 @@ import java.util.Set;
 /** A local, lightweight TV launcher. No ADB, WebView, player or background service. */
 public final class HomeActivity extends Activity {
     private static final int VIOLET = Color.rgb(136, 78, 240);
+    private static final int REQUEST_WALLPAPER = 2401;
     private final Handler clockHandler = new Handler(Looper.getMainLooper());
     private final Runnable tick = new Runnable() {
         @Override public void run() {
@@ -121,7 +122,12 @@ public final class HomeActivity extends Activity {
         if ("graphite".equals(wallpaper)) base=dark()?0xFF12171E:0xFFF4F5F7;
         int other = dark() ? 0xFF16112D : 0xFFDADDED;
         int tinted = mix(other, accent, strength / 300f);
-        root.setBackground(shape(base, tinted, 0, 0));
+        if ("custom".equals(wallpaper)) {
+            android.graphics.drawable.Drawable picture = PhotoWallpaper.load(this,dark(),prefs.getInt("photoDim",110));
+            if (picture!=null){root.setBackground(picture);return;}
+        }
+        root.setBackground("waves".equals(wallpaper) && !low()
+                ? new WaveBackground(base,tinted,accent) : shape(base,tinted,0,0));
     }
     private int appColor(String pkg) {
         String p = pkg.toLowerCase(Locale.ROOT);
@@ -432,9 +438,11 @@ public final class HomeActivity extends Activity {
         }catch(Exception ignored){return "";}
     }
     private void chooseWallpaper(){
-        String[] names={"Динамические волны","Мягкий градиент","Однотонный","Графитовый"};
-        String[] values={"waves","soft","solid","graphite"};
+        String[] names={"Динамические волны","Мягкий градиент","Однотонный","Графитовый","Свои обои (изображение)","Затемнение своих обоев"};
+        String[] values={"waves","soft","solid","graphite","custom","dim"};
         new AlertDialog.Builder(this).setTitle("Фон").setItems(names,(d,n)->{
+            if(n==4){pickPhoto();return;}
+            if(n==5){choosePhotoDim();return;}
             prefs.edit().putString("wallpaper",values[n]).apply();
             build();settings();
         }).show();
@@ -455,6 +463,40 @@ public final class HomeActivity extends Activity {
               if(n==1)settings();
               if(n==2)startActivity(new Intent(Settings.ACTION_SETTINGS));
           }).setNegativeButton("Закрыть",null).show();
+    }
+
+    private void pickPhoto(){
+        Intent intent=new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("image/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        try {startActivityForResult(intent,REQUEST_WALLPAPER);}
+        catch(Exception ex){
+            Toast.makeText(this,"На телевизоре не найден выбор изображений",Toast.LENGTH_LONG).show();
+        }
+    }
+    @Override protected void onActivityResult(int request,int result,Intent data){
+        super.onActivityResult(request,result,data);
+        if(request!=REQUEST_WALLPAPER||result!=RESULT_OK||data==null||data.getData()==null)return;
+        android.net.Uri uri=data.getData();
+        Toast.makeText(this,"Подготавливаю обои…",Toast.LENGTH_SHORT).show();
+        new Thread(()->{
+            boolean ok=PhotoWallpaper.save(getApplicationContext(),uri);
+            runOnUiThread(()->{
+                if(ok){prefs.edit().putString("wallpaper","custom").apply();build();}
+                else Toast.makeText(this,"Не удалось открыть изображение",Toast.LENGTH_LONG).show();
+            });
+        }).start();
+    }
+    private void choosePhotoDim(){
+        SeekBar slider=new SeekBar(this);
+        slider.setMax(200);
+        slider.setProgress(prefs.getInt("photoDim",110));
+        slider.setPadding(dp(22),dp(20),dp(22),dp(10));
+        new AlertDialog.Builder(this).setTitle("Затемнение или осветление фото")
+          .setView(slider).setPositiveButton("Применить",(d,n)->{
+              prefs.edit().putInt("photoDim",slider.getProgress()).apply();
+              build();settings();
+          }).setNegativeButton("Отмена",null).show();
     }
 
 }
