@@ -21,6 +21,8 @@ import java.io.InputStream;
 public final class PhotoWallpaper {
     public static final String FILE_NAME = "turbo_wallpaper.jpg";
     private PhotoWallpaper() {}
+    private static Bitmap cached;
+    private static long cachedModified;
 
     public static boolean save(Context context, Uri uri) {
         try {
@@ -49,20 +51,28 @@ public final class PhotoWallpaper {
             } finally {
                 image.recycle();
             }
+            synchronized(PhotoWallpaper.class) {
+                if(cached!=null){cached.recycle();cached=null;}
+                cachedModified=0;
+            }
             return true;
         } catch (Exception ignored) {
             return false;
         }
     }
 
-    public static Drawable load(Context context, boolean dark, int opacity) {
+    public static synchronized Drawable load(Context context, boolean dark, int opacity) {
         File file = new File(context.getFilesDir(), FILE_NAME);
         if (!file.exists()) return null;
-        BitmapFactory.Options opts = new BitmapFactory.Options();
-        opts.inPreferredConfig = Bitmap.Config.RGB_565;
-        Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), opts);
-        if (bitmap == null) return null;
-        return new Picture(bitmap, dark, opacity);
+        if(cached==null || cached.isRecycled() || cachedModified!=file.lastModified()) {
+            if(cached!=null && !cached.isRecycled())cached.recycle();
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+            cached = BitmapFactory.decodeFile(file.getAbsolutePath(), opts);
+            cachedModified=file.lastModified();
+        }
+        if (cached == null) return null;
+        return new Picture(cached, dark, opacity);
     }
 
     private static final class Picture extends Drawable {
