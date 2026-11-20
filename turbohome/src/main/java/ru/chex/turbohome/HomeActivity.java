@@ -160,7 +160,6 @@ public final class HomeActivity extends Activity {
                 AppItem app = new AppItem();
                 app.pkg = pkg;
                 app.title = String.valueOf(info.loadLabel(pm));
-                app.icon = info.loadIcon(pm);
                 app.launch = new Intent(Intent.ACTION_MAIN).addCategory(cat)
                         .setClassName(pkg, info.activityInfo.name)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -274,7 +273,8 @@ public final class HomeActivity extends Activity {
         int c=appColor(app.pkg);
         card.setBackground(shape(mix(c,0xFF11162A,.55f),mix(c,0xFF12172A,.75f),dp(20),0));
         ImageView image=new ImageView(this);
-        image.setImageDrawable(app.icon);
+        try { image.setImageDrawable(getPackageManager().getApplicationIcon(app.pkg)); }
+        catch (PackageManager.NameNotFoundException ignored) { }
         image.setScaleType(ImageView.ScaleType.FIT_CENTER);
         card.addView(image,new LinearLayout.LayoutParams(dp(48),dp(48)));
         TextView title=text(app.title,16,Color.WHITE,true);
